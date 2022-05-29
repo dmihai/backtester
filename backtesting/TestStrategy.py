@@ -134,12 +134,7 @@ class TestStrategy(Backtester):
                     (df2.shift(i).low_price <= df2.profit2),
                     ['status', 'stop_offset']] = ['profit2', -i]
 
-        print(df2.loc[df2.status !=
-                      ''].loc[df2.shift(1).start_offset + df2.shift(1).index + 10000 > df2.index])
-
-        print(df2.groupby('status').size())
-
-        print(df2.loc[(df2.status == 'stop') & (df2.timestamp > '2021-02-01'), [
-              'timestamp', 'start_offset', 'start', 'stop_offset', 'stop']])
+        df2.loc[df2.status == 'stop', 'pnl'] = -abs(df2.start - df2.stop)
+        df2.loc[df2.status == 'profit2', 'pnl'] = abs(df2.profit2 - df2.start)
 
         self._test_execution_time = time.time() - start

@@ -32,6 +32,17 @@ class Backtester:
     def get_data(self, timeframe):
         return self._data
 
+    def get_equity_curve(self, expected_cost, lot, investment):
+        total_return = self._data[self._data.pnl != 0].pnl - expected_cost
+        pnl = total_return * lot
+        return pnl.cumsum() + investment
+
+    def get_groupby_status(self):
+        return self._data[
+            (self._data.status != '') &
+            (self._data.status != 'cancel')
+        ].groupby('status').size()
+
     def get_results(self):
         if self._results is not None:
             return self._results
