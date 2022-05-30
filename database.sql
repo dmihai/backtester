@@ -9,7 +9,8 @@ CREATE TABLE jobs (
     timeframe CHAR(3),
     params TEXT,
     message VARCHAR(255),
-    execution_time INT UNSIGNED
+    execution_time INT UNSIGNED,
+    last_update DATETIME
 ) engine=InnoDB default charset latin1;
 
 CREATE TABLE results (
