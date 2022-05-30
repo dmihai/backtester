@@ -3,11 +3,13 @@ CREATE TABLE jobs (
     status ENUM('idle', 'processing', 'error', 'done'),
     worker VARCHAR(15),
     strategy VARCHAR(30),
+    strategy_version INT UNSIGNED,
     asset CHAR(6),
     year INT UNSIGNED,
     timeframe CHAR(3),
     params TEXT,
-    message VARCHAR(255)
+    message VARCHAR(255),
+    execution_time INT UNSIGNED
 ) engine=InnoDB default charset latin1;
 
 CREATE TABLE results (
