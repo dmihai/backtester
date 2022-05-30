@@ -1,5 +1,11 @@
+# directory containing the rates
 input_path = ""
+
+# database credentials
 db_host = ""
 db_user = ""
 db_pass = ""
 db_name = ""
+
+# worker id for the machine running this script (must be unique)
+worker_id = ""
