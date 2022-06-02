@@ -1,8 +1,24 @@
-import config
 import sys
 import importlib
+import psutil
+import os
+
+import config
 from utils.Database import Database
 
+
+def is_running(script):
+    for q in psutil.process_iter():
+        if q.name().startswith('python'):
+            if len(q.cmdline()) > 1 and script in q.cmdline()[1] and q.pid != os.getpid():
+                print("'{}' Process is already running".format(script))
+                return True
+
+    return False
+
+
+if is_running('main.py'):
+    sys.exit()
 
 db = Database()
 db.connect(config.db_host, config.db_user, config.db_pass, config.db_name)
