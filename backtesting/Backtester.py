@@ -32,10 +32,12 @@ class Backtester:
     def get_data(self, timeframe):
         return self._data
 
-    def get_equity_curve(self, expected_cost, lot, investment):
-        total_return = self._data[self._data.pnl != 0].pnl - expected_cost
-        pnl = total_return * lot
-        return pnl.cumsum() + investment
+    def get_equity_curve(self, lot, investment):
+        if self._results is not None:
+            pnl = self._results.pnl * lot
+            return pnl.cumsum() + investment
+        else:
+            print("Please run test() first.")
 
     def get_groupby_status(self):
         return self._data[
@@ -44,10 +46,35 @@ class Backtester:
         ].groupby('status').size()
 
     def get_results(self):
-        if self._results is not None:
-            return self._results
+        res = self._results
+
+        if res is not None:
+            orders = res.timestamp.count()
+            winning_orders = res[res.pnl >= 0].timestamp.count()
+            winning_ratio = winning_orders / orders
+
+            gross_profit = res[res.pnl >= 0].pnl.sum()
+            gross_loss = abs(res[res.pnl < 0].pnl.sum())
+
+            average_gain = gross_profit / winning_orders
+            average_loss = gross_loss / (orders - winning_orders)
+
+            profit_factor = gross_profit / gross_loss
+
+            equity = self.get_equity_curve(10000, 10000)
+            net_profit = equity.iloc[-1] - 10000
+
+            return {
+                "orders": orders,
+                "winning_ratio": winning_ratio,
+                "net_profit": net_profit,
+                "average_gain": average_gain,
+                "average_loss": average_loss,
+                "profit_factor": profit_factor,
+            }
+
         else:
-            print("Please run .test() first.")
+            print("Please run .test() first")
 
     def get_init_execution_time(self):
         return self._init_execution_time
@@ -60,10 +87,6 @@ class Backtester:
 
     def plot_results(self):
         if self._results is not None:
-            print("Plotting Results.")
-            title = f"{self._instrument}"
-            self._results[["creturns", "cstrategy"]].plot(
-                title=title, figsize=(12, 8))
-            plt.show()
+            pass
         else:
             print("Please run test() first.")
