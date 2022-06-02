@@ -14,13 +14,15 @@ CREATE TABLE jobs (
 ) engine=InnoDB default charset latin1;
 
 CREATE TABLE results (
-    job_id INT UNSIGNED PRIMARY KEY,
+    job_id INT UNSIGNED,
+    session ENUM('all', 'sydney', 'tokyo', 'london', 'new_york'),
     orders INT UNSIGNED,
     winning_ratio DOUBLE UNSIGNED,
     net_profit DOUBLE,
     average_gain DOUBLE,
     average_loss DOUBLE,
-    profit_factor DOUBLE
+    profit_factor DOUBLE,
+    PRIMARY KEY (job_id, session)
 ) engine=InnoDB default charset latin1;
 
 CREATE TABLE trading_cost (
