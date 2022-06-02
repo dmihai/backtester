@@ -26,7 +26,9 @@ class Database:
         if result is None:
             return None
 
-        params = json.loads(result[6])
+        params = {}
+        if result[6] is not None and len(result[6]) > 0:
+            params = json.loads(result[6])
         params['asset'] = result[3]
         params['year'] = result[4]
         params['timeframe'] = result[5]
@@ -42,7 +44,8 @@ class Database:
 
         query = "UPDATE jobs\
             SET status = 'processing', worker = %s, last_update = now()\
-            WHERE status = 'idle'"
+            WHERE status = 'idle'\
+            LIMIT 1"
         cursor.execute(query, (worker_id,))
 
         self._conn.commit()
