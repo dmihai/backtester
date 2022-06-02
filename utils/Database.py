@@ -47,12 +47,30 @@ class Database:
 
         self._conn.commit()
 
+    def save_job_results(self, job_id, results):
+        cursor = self._conn.cursor()
+
+        query = "REPLACE INTO results\
+            (job_id, session, orders, winning_ratio, net_profit, average_gain, average_loss, profit_factor)\
+            VALUES (%s, %s, %s, %s, %s, %s, %s ,%s)"
+        cursor.execute(query, (
+            job_id, 'all',
+            int(results['orders']),
+            float(results['winning_ratio']),
+            float(results['net_profit']),
+            float(results['average_gain']),
+            float(results['average_loss']),
+            float(results['profit_factor'])
+        ))
+
+        self._conn.commit()
+
     def finish_job_by_id(self, job_id, execution_time):
         cursor = self._conn.cursor()
 
         query = "UPDATE jobs\
             SET status = 'done', last_update = now(), execution_time = %s\
-            WHERE id = %d AND status = 'processing'"
-        cursor.execute(query, (execution_time, job_id))
+            WHERE id = %s AND status = 'processing'"
+        cursor.execute(query, (int(execution_time), job_id))
 
         self._conn.commit()

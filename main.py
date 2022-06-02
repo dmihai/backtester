@@ -15,12 +15,13 @@ if job is None:
 if job is None:
     sys.exit()
 
-print(job)
-
 module = importlib.import_module("backtesting." + job['strategy'])
 class_ = getattr(module, job['strategy'])
+
 test = class_(**job['params'])
 test.test()
-print(test.get_groupby_status())
-print(f"Init exexution time {test.get_init_execution_time()}")
-print(f"Test execution time {test.get_test_execution_time()}")
+results = test.get_results()
+execution_time = test.get_init_execution_time() + test.get_test_execution_time()
+
+db.save_job_results(job['id'], results)
+db.finish_job_by_id(job['id'], execution_time)
