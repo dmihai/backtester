@@ -62,7 +62,7 @@ class Backtester:
             profit_factor = gross_profit / gross_loss
 
             equity = self.get_equity_curve(10000, 10000)
-            net_profit = equity.iloc[-1] - 10000
+            net_profit = (equity.iloc[-1] - 10000) if len(equity > 0) else 0
 
             return {
                 "orders": orders,
