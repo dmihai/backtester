@@ -1,4 +1,4 @@
-version = 1
+version = 2
 
 sessions = {
     'sydney': (23, 8),
