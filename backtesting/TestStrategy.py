@@ -41,7 +41,7 @@ class TestStrategy(Backtester):
         df['ema_2'] = df['close_price'].ewm(span=self._hires_ema_2).mean()
         df['ema_3'] = df['close_price'].ewm(span=self._hires_ema_3).mean()
         df['signal'] = 0
-        df['start'] = df.low_price
+        df['sell_start'] = df.low_price
         df['stop'] = 0.0
         df['profit1'] = 0.0
         df['profit2'] = 0.0
@@ -51,8 +51,8 @@ class TestStrategy(Backtester):
         df['pnl'] = 0.0
 
         for i in range(1, 6):
-            df.loc[df.shift(i).low_price < df.start,
-                   'start'] = df.shift(i).low_price
+            df.loc[df.shift(i).low_price < df.sell_start,
+                   'sell_start'] = df.shift(i).low_price
 
         return df
 
@@ -105,15 +105,16 @@ class TestStrategy(Backtester):
                 (df2.shift(1).ema_1 < df2.shift(1).ema_2) &
                 (df2.shift(1).ema_2 < df2.shift(1).ema_3) &
                 (df2.shift(1).high_price < df2.shift(1).ema_1) &
-                (df2.start < df2.low_price),
+                (df2.sell_start < df2.low_price),
                 'signal'
                 ] = -1
 
-        df2.loc[df2.signal == -1, 'start'] = df2.start - self._start_offset
+        df2.loc[df2.signal == -1, 'sell_start'] = df2.sell_start - \
+            self._start_offset
         df2.loc[df2.signal == -1, 'stop'] = df2.high_price + self._stop_offset
 
-        risk = self._adjusted_take_profit * (df2.stop - df2.start)
-        df2.loc[df2.signal == -1, 'profit1'] = df2.start - risk
+        risk = self._adjusted_take_profit * (df2.stop - df2.sell_start)
+        df2.loc[df2.signal == -1, 'profit1'] = df2.sell_start - risk
         df2.loc[df2.signal == -1, 'profit2'] = df2.profit1 - risk
 
         mode = 0
@@ -134,7 +135,7 @@ class TestStrategy(Backtester):
                     mode = 0
                     status = 'cancel'
                     stop_index = i
-                elif row['low_price'] <= trading['start']:
+                elif row['low_price'] <= trading['sell_start']:
                     mode = -2
                     status = 'trading'
                     start_index = i
@@ -146,7 +147,7 @@ class TestStrategy(Backtester):
                         stop_index = i
                     elif row['low_price'] <= trading['profit1']:
                         status = 'profit1'
-                        trading['stop'] = trading['start']
+                        trading['stop'] = trading['sell_start']
                 elif status == 'profit1':
                     if row['high_price'] >= trading['stop']:
                         mode = 0
@@ -163,11 +164,11 @@ class TestStrategy(Backtester):
                 ]
                 status = ''
 
-        df2.loc[df2.status == 'stop', 'pnl'] = -abs(df2.start - df2.stop)
+        df2.loc[df2.status == 'stop', 'pnl'] = -abs(df2.sell_start - df2.stop)
         df2.loc[df2.status == 'even', 'pnl'] = self._profit1_keep_ratio * \
-            abs(df2.profit1 - df2.start)
+            abs(df2.profit1 - df2.sell_start)
         df2.loc[df2.status == 'profit2', 'pnl'] = (1 - self._profit1_keep_ratio) * \
-            abs(df2.profit2 - df2.start)
+            abs(df2.profit2 - df2.sell_start)
 
         df2.loc[df2.status.isin(
             ['stop', 'even', 'profit2']), 'pnl'] = df2.pnl - self._trading_cost
