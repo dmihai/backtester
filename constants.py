@@ -1,5 +1,12 @@
 version = 1
 
+sessions = {
+    'sydney': (23, 8),
+    'tokyo': (2, 11),
+    'london': (9, 18),
+    'new_york': (15, 24)
+}
+
 frames = {
     "M1":             1,
     "M3":             3,

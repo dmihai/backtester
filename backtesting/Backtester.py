@@ -1,7 +1,9 @@
-import config
 import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
+
+import config
+import constants
 
 
 class Backtester:
@@ -32,12 +34,9 @@ class Backtester:
     def get_data(self, timeframe):
         return self._data
 
-    def get_equity_curve(self, lot, investment):
-        if self._results is not None:
-            pnl = self._results.pnl * lot
-            return pnl.cumsum() + investment
-        else:
-            print("Please run test() first.")
+    def get_equity_curve(self, results, lot, investment):
+        pnl = results.pnl * lot
+        return pnl.cumsum() + investment
 
     def get_groupby_status(self):
         return self._data[
@@ -48,20 +47,20 @@ class Backtester:
     def get_results(self):
         res = self._results
 
-        if res is not None:
-            orders = res.timestamp.count()
-            winning_orders = res[res.pnl >= 0].timestamp.count()
+        def get_session_results(results):
+            orders = results.timestamp.count()
+            winning_orders = results[results.pnl >= 0].timestamp.count()
             winning_ratio = winning_orders / orders
 
-            gross_profit = res[res.pnl >= 0].pnl.sum()
-            gross_loss = abs(res[res.pnl < 0].pnl.sum())
+            gross_profit = results[results.pnl >= 0].pnl.sum()
+            gross_loss = abs(results[results.pnl < 0].pnl.sum())
 
             average_gain = gross_profit / winning_orders
             average_loss = gross_loss / (orders - winning_orders)
 
             profit_factor = gross_profit / gross_loss
 
-            equity = self.get_equity_curve(10000, 10000)
+            equity = self.get_equity_curve(results, 10000, 10000)
             net_profit = (equity.iloc[-1] - 10000) if len(equity > 0) else 0
 
             return {
@@ -72,6 +71,18 @@ class Backtester:
                 "average_loss": average_loss,
                 "profit_factor": profit_factor,
             }
+
+        if res is not None:
+            results = {
+                'all': get_session_results(res)
+            }
+
+            for sess, hours in constants.sessions.items():
+                sess_res = res[(res.timestamp.dt.hour >= hours[0]) &
+                               (res.timestamp.dt.hour < hours[1])]
+                results[sess] = get_session_results(sess_res)
+
+            return results
 
         else:
             print("Please run .test() first")

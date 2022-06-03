@@ -56,15 +56,17 @@ class Database:
         query = "REPLACE INTO results\
             (job_id, session, orders, winning_ratio, net_profit, average_gain, average_loss, profit_factor)\
             VALUES (%s, %s, %s, %s, %s, %s, %s ,%s)"
-        cursor.execute(query, (
-            job_id, 'all',
-            int(results['orders']),
-            float(results['winning_ratio']),
-            float(results['net_profit']),
-            float(results['average_gain']),
-            float(results['average_loss']),
-            float(results['profit_factor'])
-        ))
+
+        for sess, res in results.items():
+            cursor.execute(query, (
+                job_id, sess,
+                int(res['orders']),
+                float(res['winning_ratio']),
+                float(res['net_profit']),
+                float(res['average_gain']),
+                float(res['average_loss']),
+                float(res['profit_factor'])
+            ))
 
         self._conn.commit()
 
