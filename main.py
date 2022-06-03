@@ -4,6 +4,7 @@ import psutil
 import os
 
 import config
+import constants
 from utils.Database import Database
 
 
@@ -23,10 +24,11 @@ if is_running('main.py'):
 db = Database()
 db.connect(config.db_host, config.db_user, config.db_pass, config.db_name)
 
-job = db.get_next_processing_job_by_worker(config.worker_id)
+job = db.get_next_processing_job_by_worker(config.worker_id, constants.version)
 if job is None:
-    db.assign_job_to_worker(config.worker_id)
-    job = db.get_next_processing_job_by_worker(config.worker_id)
+    db.assign_job_to_worker(config.worker_id, constants.version)
+    job = db.get_next_processing_job_by_worker(
+        config.worker_id, constants.version)
 
 if job is None:
     sys.exit()

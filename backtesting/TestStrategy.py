@@ -11,7 +11,7 @@ class TestStrategy(Backtester):
                  hires_ema_1=8, hires_ema_2=13, hires_ema_3=21,
                  start_offset=0.0003, stop_offset=0.0003,
                  min_diff_emas=0.00015, max_ratio_emas=0.2,
-                 profit1_keep_ratio=0.5, adjusted_take_profit=1, trading_cost=0.0001):
+                 profit1_keep_ratio=0.5, adjusted_take_profit=1, trading_cost=0.0005):
 
         start = time.time()
 

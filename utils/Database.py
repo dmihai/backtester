@@ -12,14 +12,14 @@ class Database:
                                              user=db_user,
                                              password=db_pass)
 
-    def get_next_processing_job_by_worker(self, worker_id):
+    def get_next_processing_job_by_worker(self, worker_id, version):
         cursor = self._conn.cursor()
 
         query = "SELECT id, strategy, asset, year, timeframe, params\
             FROM jobs\
-            WHERE status='processing' AND worker=%s\
+            WHERE status='processing' AND worker=%s AND version=%s\
             LIMIT 1"
-        cursor.execute(query, (worker_id,))
+        cursor.execute(query, (worker_id, version))
 
         result = cursor.fetchone()
 
@@ -27,11 +27,11 @@ class Database:
             return None
 
         params = {}
-        if result[6] is not None and len(result[6]) > 0:
-            params = json.loads(result[6])
-        params['asset'] = result[3]
-        params['year'] = result[4]
-        params['timeframe'] = result[5]
+        if result[5] is not None and len(result[5]) > 0:
+            params = json.loads(result[5])
+        params['asset'] = result[2]
+        params['year'] = result[3]
+        params['timeframe'] = result[4]
 
         return {
             "id": result[0],
@@ -39,14 +39,14 @@ class Database:
             "params": params
         }
 
-    def assign_job_to_worker(self, worker_id):
+    def assign_job_to_worker(self, worker_id, version):
         cursor = self._conn.cursor()
 
         query = "UPDATE jobs\
             SET status = 'processing', worker = %s, last_update = now()\
-            WHERE status = 'idle'\
+            WHERE status = 'idle' AND version=%s\
             LIMIT 1"
-        cursor.execute(query, (worker_id,))
+        cursor.execute(query, (worker_id, version))
 
         self._conn.commit()
 

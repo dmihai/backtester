@@ -1,3 +1,5 @@
+version = 1
+
 frames = {
     "M1":             1,
     "M3":             3,
