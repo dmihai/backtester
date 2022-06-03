@@ -50,15 +50,16 @@ class Backtester:
         def get_session_results(results):
             orders = results.timestamp.count()
             winning_orders = results[results.pnl >= 0].timestamp.count()
-            winning_ratio = winning_orders / orders
+            winning_ratio = winning_orders / orders if orders > 0 else 0
 
             gross_profit = results[results.pnl >= 0].pnl.sum()
             gross_loss = abs(results[results.pnl < 0].pnl.sum())
 
-            average_gain = gross_profit / winning_orders
-            average_loss = gross_loss / (orders - winning_orders)
+            average_gain = gross_profit / winning_orders if winning_orders > 0 else 0
+            lossing_orders = orders - winning_orders
+            average_loss = gross_loss / lossing_orders if lossing_orders > 0 else 0
 
-            profit_factor = gross_profit / gross_loss
+            profit_factor = gross_profit / gross_loss if gross_loss > 0 else 0
 
             equity = self.get_equity_curve(results, 10000, 10000)
             net_profit = (equity.iloc[-1] - 10000) if len(equity > 0) else 0
