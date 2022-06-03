@@ -15,11 +15,11 @@ class Database:
     def get_next_processing_job_by_worker(self, worker_id):
         cursor = self._conn.cursor()
 
-        query = "SELECT id, strategy, strategy_version, asset, year, timeframe, params\
+        query = "SELECT id, strategy, asset, year, timeframe, params\
             FROM jobs\
-            WHERE status=%s AND worker=%s\
+            WHERE status='processing' AND worker=%s\
             LIMIT 1"
-        cursor.execute(query, ('processing', worker_id))
+        cursor.execute(query, (worker_id,))
 
         result = cursor.fetchone()
 
