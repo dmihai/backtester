@@ -1,5 +1,7 @@
 version = 3
 
+repeat = 3
+
 sessions = {
     'sydney': (23, 8),
     'tokyo': (2, 11),
