@@ -27,5 +27,6 @@ CREATE TABLE results (
 
 CREATE TABLE trading_cost (
     asset CHAR(6) PRIMARY KEY,
-    cost DOUBLE UNSIGNED
+    cost DOUBLE UNSIGNED,
+    pip_value DOUBLE UNSIGNED
 ) engine=InnoDB default charset latin1;

@@ -7,11 +7,12 @@ import constants
 
 
 class Backtester:
-    def __init__(self, asset, year, timeframe, trading_cost):
+    def __init__(self, asset, year, timeframe, trading_cost, pip_value):
         self._asset = asset
         self._year = year
         self._timeframe = timeframe
         self._trading_cost = trading_cost
+        self._pip_value = pip_value
 
         self._data = {}
         self._results = None

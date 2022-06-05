@@ -9,9 +9,10 @@ class TestStrategy(Backtester):
     def __init__(self, asset, year, timeframe='M5', timeframe_low='H1',
                  lowres_ema_1=8, lowres_ema_2=21,
                  hires_ema_1=8, hires_ema_2=13, hires_ema_3=21,
-                 start_offset=0.0003, stop_offset=0.0003,
-                 min_diff_emas=0.00015, max_ratio_emas=0.2,
-                 profit1_keep_ratio=0.5, adjusted_take_profit=1, trading_cost=0.0005):
+                 start_offset=3, stop_offset=3,
+                 min_diff_emas=1.5, max_ratio_emas=0.2,
+                 profit1_keep_ratio=0.5, adjusted_take_profit=1,
+                 trading_cost=0.0005, pip_value=0.0001):
 
         start = time.time()
 
@@ -76,6 +77,9 @@ class TestStrategy(Backtester):
         df2 = self._data
 
         frame_minutes = frames[self._timeframe_low]
+        min_diff_emas = self._min_diff_emas * self._pip_value
+        start_offset = self._start_offset * self._pip_value
+        stop_offset = self._stop_offset * self._pip_value
 
         sell_timestamps = df1[(df1.ema_1 < df1.ema_2) &
                               (df1.close_price < df1.ema_1) &
@@ -120,8 +124,8 @@ class TestStrategy(Backtester):
                 (df2.ema_2 < df2.ema_3) &
                 (df2.ema_1 < df2.high_price) &
                 (df2.close_price < df2.ema_3) &
-                (diff_ema_21 > self._min_diff_emas) &
-                (diff_ema_32 > self._min_diff_emas) &
+                (diff_ema_21 > min_diff_emas) &
+                (diff_ema_32 > min_diff_emas) &
                 (abs((diff_ema_21 / diff_ema_31) - 0.5) < self._max_ratio_emas) &
                 (df2.shift(1).ema_1 < df2.shift(1).ema_2) &
                 (df2.shift(1).ema_2 < df2.shift(1).ema_3) &
@@ -138,8 +142,8 @@ class TestStrategy(Backtester):
                 (df2.ema_2 > df2.ema_3) &
                 (df2.ema_1 > df2.low_price) &
                 (df2.close_price > df2.ema_3) &
-                (diff_ema_12 > self._min_diff_emas) &
-                (diff_ema_23 > self._min_diff_emas) &
+                (diff_ema_12 > min_diff_emas) &
+                (diff_ema_23 > min_diff_emas) &
                 (abs((diff_ema_12 / diff_ema_13) - 0.5) < self._max_ratio_emas) &
                 (df2.shift(1).ema_1 > df2.shift(1).ema_2) &
                 (df2.shift(1).ema_2 > df2.shift(1).ema_3) &
@@ -148,17 +152,15 @@ class TestStrategy(Backtester):
                 'signal'
                 ] = 1
 
-        df2.loc[df2.signal == -1, 'sell_start'] = df2.sell_start - \
-            self._start_offset
-        df2.loc[df2.signal == -1, 'stop'] = df2.high_price + self._stop_offset
+        df2.loc[df2.signal == -1, 'sell_start'] = df2.sell_start - start_offset
+        df2.loc[df2.signal == -1, 'stop'] = df2.high_price + stop_offset
 
         sell_risk = self._adjusted_take_profit * (df2.stop - df2.sell_start)
         df2.loc[df2.signal == -1, 'profit1'] = df2.sell_start - sell_risk
         df2.loc[df2.signal == -1, 'profit2'] = df2.profit1 - sell_risk
 
-        df2.loc[df2.signal == 1, 'buy_start'] = df2.buy_start + \
-            self._start_offset
-        df2.loc[df2.signal == 1, 'stop'] = df2.low_price - self._stop_offset
+        df2.loc[df2.signal == 1, 'buy_start'] = df2.buy_start + start_offset
+        df2.loc[df2.signal == 1, 'stop'] = df2.low_price - stop_offset
 
         buy_risk = self._adjusted_take_profit * (df2.buy_start - df2.stop)
         df2.loc[df2.signal == 1, 'profit1'] = df2.buy_start + buy_risk

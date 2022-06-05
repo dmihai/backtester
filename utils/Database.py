@@ -15,8 +15,9 @@ class Database:
     def get_next_processing_job_by_worker(self, worker_id, version):
         cursor = self._conn.cursor()
 
-        query = "SELECT id, strategy, asset, year, timeframe, params\
+        query = "SELECT id, strategy, asset, year, timeframe, params, cost, pip_value\
             FROM jobs\
+            INNER JOIN trading_cost USING (asset)\
             WHERE status='processing' AND worker=%s AND version=%s\
             LIMIT 1"
         cursor.execute(query, (worker_id, version))
@@ -32,6 +33,8 @@ class Database:
         params['asset'] = result[2]
         params['year'] = result[3]
         params['timeframe'] = result[4]
+        params['trading_cost'] = result[6]
+        params['pip_value'] = result[7]
 
         return {
             "id": result[0],
