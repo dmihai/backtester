@@ -29,7 +29,7 @@ class TestStrategy(Backtester):
         self._max_ratio_emas = max_ratio_emas
         self._adjusted_take_profit = adjusted_take_profit
 
-        super().__init__(asset, year, timeframe, trading_cost)
+        super().__init__(asset, year, timeframe, trading_cost, pip_value)
 
         self._data_low = self.acquire_data(timeframe_low)
         self._data_low = self.prepare_data_low()
