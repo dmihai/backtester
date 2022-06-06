@@ -12,22 +12,23 @@ def is_running(script):
     for q in psutil.process_iter():
         if q.name().startswith('python'):
             if len(q.cmdline()) > 1 and script in q.cmdline()[1] and q.pid != os.getpid():
-                print("'{}' Process is already running".format(script))
                 return True
 
     return False
 
-def process_job(db):
-    job = db.get_next_processing_job_by_worker(config.worker_id, constants.version)
-    if job is None:
-        db.assign_job_to_worker(config.worker_id, constants.version)
-        job = db.get_next_processing_job_by_worker(
-            config.worker_id, constants.version)
 
-    if job is None:
-        return False
+def get_next_job(db):
+    job = db.get_next_processing_job_by_worker(
+        config.worker_id, constants.version)
+    if job is not None:
+        return job
 
-    print (f"Processing job {job['id']}")
+    db.assign_job_to_worker(config.worker_id, constants.version)
+    return db.get_next_processing_job_by_worker(config.worker_id, constants.version)
+
+
+def process_job(db, job):
+    print(f"Processing job {job['id']}")
 
     module = importlib.import_module("backtesting." + job['strategy'])
     class_ = getattr(module, job['strategy'])
@@ -40,18 +41,18 @@ def process_job(db):
     db.save_job_results(job['id'], results)
     db.finish_job_by_id(job['id'], execution_time)
 
-    return True
-
-
 
 if is_running('main.py'):
     print(f"Script is already running")
-    sys.exit()
+else:
+    db = Database()
+    db.connect(config.db_host, config.db_user, config.db_pass, config.db_name)
 
-db = Database()
-db.connect(config.db_host, config.db_user, config.db_pass, config.db_name)
+    for _ in range(constants.repeat):
+        job = get_next_job(db)
 
-for _ in range(constants.repeat):
-    if not process_job(db):
-        print("No more jobs")
-        break
+        if job is None:
+            print("No more jobs")
+            break
+
+        process_job(db, job)
