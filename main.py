@@ -1,4 +1,4 @@
-import sys
+import argparse
 import importlib
 import psutil
 import os
@@ -48,7 +48,12 @@ else:
     db = Database()
     db.connect(config.db_host, config.db_user, config.db_pass, config.db_name)
 
-    for _ in range(constants.repeat):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--times', type=int, required=False, default=1,
+                        help='The number of jobs the script should process.')
+    args = parser.parse_args()
+
+    for _ in range(args.times):
         job = get_next_job(db)
 
         if job is None:
