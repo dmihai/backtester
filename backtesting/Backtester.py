@@ -1,4 +1,5 @@
 import pandas as pd
+import time
 import matplotlib.pyplot as plt
 from datetime import datetime
 
@@ -32,7 +33,7 @@ class Backtester:
     def prepare_data(self):
         return self._data.copy()
 
-    def get_data(self, timeframe):
+    def get_data(self):
         return self._data
 
     def get_equity_curve(self, results, lot, investment):
@@ -48,7 +49,156 @@ class Backtester:
     def get_results(self):
         res = self._results
 
-        def get_session_results(results):
+        if res is not None:
+            results = {
+                'all': self._get_session_results(res)
+            }
+
+            for sess, hours in constants.sessions.items():
+                sess_res = res[(res.timestamp.dt.hour >= hours[0]) &
+                               (res.timestamp.dt.hour < hours[1])]
+                results[sess] = self._get_session_results(sess_res)
+
+            return results
+
+        else:
+            print("Please run .test() first")
+    
+    def get_pnl(self):
+        return self._results
+
+    def get_init_execution_time(self):
+        return self._init_execution_time
+
+    def get_test_execution_time(self):
+        return self._test_execution_time
+
+    def test(self):
+        start = time.time()
+
+        self._data = self._calculate_triggers()
+        self._data = self._trade()
+        self._data = self._calculate_pnl()
+
+        self._test_execution_time = time.time() - start
+
+    def plot_results(self):
+        if self._results is not None:
+            pass
+        else:
+            print("Please run test() first.")
+    
+    def _calculate_triggers(self):
+        pass
+
+    def _trade(self):
+        df = self._data
+
+        mode = 0
+        status = ''
+        trading = None
+        trading_index = 0
+        start_index = 0
+        stop_index = 0
+
+        for i, row in df.iterrows():
+            if mode == 0:  # looking for a signal
+                if row['signal'] != 0:
+                    mode = row['signal']
+                    trading = row
+                    trading_index = i
+            elif mode == -1:  # looking for an entry after a sell signal
+                if row['high_price'] >= trading['stop']:
+                    mode = 0
+                    status = 'cancel'
+                    stop_index = i
+                elif row['low_price'] <= trading['sell_start']:
+                    mode = -2
+                    status = 'trading'
+                    start_index = i
+            elif mode == 1:  # looking for an entry after a buy signal
+                if row['low_price'] <= trading['stop']:
+                    mode = 0
+                    status = 'cancel'
+                    stop_index = i
+                elif row['high_price'] >= trading['buy_start']:
+                    mode = 2
+                    status = 'trading'
+                    start_index = i
+            elif mode == -2:  # in a sell trading
+                if status == 'trading':
+                    if row['high_price'] >= trading['stop']:
+                        mode = 0
+                        status = 'stop'
+                        stop_index = i
+                    elif row['low_price'] <= trading['profit1']:
+                        status = 'profit1'
+                        trading['stop'] = trading['sell_start']
+                if status == 'profit1':
+                    if row['high_price'] >= trading['stop']:
+                        mode = 0
+                        status = 'even'
+                        stop_index = i
+                    elif row['low_price'] <= trading['profit2']:
+                        mode = 0
+                        status = 'profit2'
+                        stop_index = i
+            elif mode == 2:  # in a buy trading
+                if status == 'trading':
+                    if row['low_price'] <= trading['stop']:
+                        mode = 0
+                        status = 'stop'
+                        stop_index = i
+                    elif row['high_price'] >= trading['profit1']:
+                        status = 'profit1'
+                        trading['stop'] = trading['buy_start']
+                if status == 'profit1':
+                    if row['low_price'] <= trading['stop']:
+                        mode = 0
+                        status = 'even'
+                        stop_index = i
+                    elif row['high_price'] >= trading['profit2']:
+                        mode = 0
+                        status = 'profit2'
+                        stop_index = i
+
+            if mode == 0 and status != '':
+                df.loc[trading_index, ['status', 'start_offset', 'stop_offset']] = [
+                    status, start_index - trading_index, stop_index - trading_index
+                ]
+                status = ''
+        
+        return df
+
+    def _calculate_pnl(self):
+        df = self._data
+
+        df.loc[(df.signal == -1) & (df.status == 'stop'),
+                'pnl'] = -abs(df.sell_start - df.stop)
+        profit1 = self._profit1_keep_ratio * abs(df.profit1 - df.sell_start)
+        profit2 = (1 - self._profit1_keep_ratio) * \
+            abs(df.profit2 - df.sell_start)
+        df.loc[(df.signal == -1) & (df.status == 'even'), 'pnl'] = profit1
+        df.loc[(df.signal == -1) & (df.status == 'profit2'),
+                'pnl'] = profit1 + profit2
+
+        df.loc[(df.signal == 1) & (df.status == 'stop'),
+                'pnl'] = -abs(df.stop - df.buy_start)
+        profit1 = self._profit1_keep_ratio * abs(df.profit1 - df.buy_start)
+        profit2 = (1 - self._profit1_keep_ratio) * \
+            abs(df.profit2 - df.buy_start)
+        df.loc[(df.signal == 1) & (df.status == 'even'), 'pnl'] = profit1
+        df.loc[(df.signal == 1) & (df.status == 'profit2'),
+                'pnl'] = profit1 + profit2
+
+        df.loc[df.status.isin(
+            ['stop', 'even', 'profit2']), 'pnl'] = df.pnl - self._trading_cost
+        self._results = df.loc[df.pnl != 0, [
+            'timestamp', 'pnl', 'status', 'start_offset', 'stop_offset']].reset_index(drop=True)
+        
+        return df
+    
+    def _get_session_results(self, results):
             orders = results.timestamp.count()
             winning_orders = results[results.pnl >= 0].timestamp.count()
             winning_ratio = winning_orders / orders if orders > 0 else 0
@@ -75,36 +225,3 @@ class Backtester:
                 "average_loss": average_loss,
                 "profit_factor": profit_factor,
             }
-
-        if res is not None:
-            results = {
-                'all': get_session_results(res)
-            }
-
-            for sess, hours in constants.sessions.items():
-                sess_res = res[(res.timestamp.dt.hour >= hours[0]) &
-                               (res.timestamp.dt.hour < hours[1])]
-                results[sess] = get_session_results(sess_res)
-
-            return results
-
-        else:
-            print("Please run .test() first")
-    
-    def get_pnl(self):
-        return self._results
-
-    def get_init_execution_time(self):
-        return self._init_execution_time
-
-    def get_test_execution_time(self):
-        return self._test_execution_time
-
-    def test(self):
-        pass
-
-    def plot_results(self):
-        if self._results is not None:
-            pass
-        else:
-            print("Please run test() first.")
