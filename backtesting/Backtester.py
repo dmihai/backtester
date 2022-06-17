@@ -76,9 +76,9 @@ class Backtester:
     def test(self):
         start = time.time()
 
-        self._data = self._calculate_triggers()
-        self._data = self._trade()
-        self._data = self._calculate_pnl()
+        self._calculate_triggers()
+        self._trade()
+        self._calculate_pnl()
 
         self._test_execution_time = time.time() - start
 
@@ -167,8 +167,6 @@ class Backtester:
                     status, start_index - trading_index, stop_index - trading_index
                 ]
                 status = ''
-        
-        return df
 
     def _calculate_pnl(self):
         df = self._data
@@ -195,33 +193,31 @@ class Backtester:
             ['stop', 'even', 'profit2']), 'pnl'] = df.pnl - self._trading_cost
         self._results = df.loc[df.pnl != 0, [
             'timestamp', 'pnl', 'status', 'start_offset', 'stop_offset']].reset_index(drop=True)
-        
-        return df
     
     def _get_session_results(self, results):
-            orders = results.timestamp.count()
-            winning_orders = results[results.pnl >= 0].timestamp.count()
-            winning_ratio = winning_orders / orders if orders > 0 else 0
+        orders = results.timestamp.count()
+        winning_orders = results[results.pnl >= 0].timestamp.count()
+        winning_ratio = winning_orders / orders if orders > 0 else 0
 
-            gross_profit = results[results.pnl >= 0].pnl.sum()
-            gross_loss = abs(results[results.pnl < 0].pnl.sum())
+        gross_profit = results[results.pnl >= 0].pnl.sum()
+        gross_loss = abs(results[results.pnl < 0].pnl.sum())
 
-            average_gain = gross_profit / winning_orders if winning_orders > 0 else 0
-            lossing_orders = orders - winning_orders
-            average_loss = gross_loss / lossing_orders if lossing_orders > 0 else 0
+        average_gain = gross_profit / winning_orders if winning_orders > 0 else 0
+        lossing_orders = orders - winning_orders
+        average_loss = gross_loss / lossing_orders if lossing_orders > 0 else 0
 
-            profit_factor = gross_profit / gross_loss if gross_loss > 0 else 0
-            if gross_loss == 0 and gross_profit > 0:
-                profit_factor = 100000000
+        profit_factor = gross_profit / gross_loss if gross_loss > 0 else 0
+        if gross_loss == 0 and gross_profit > 0:
+            profit_factor = 100000000
 
-            equity = self.get_equity_curve(results, 10000, 10000)
-            net_profit = (equity.iloc[-1] - 10000) if len(equity > 0) else 0
+        equity = self.get_equity_curve(results, 10000, 10000)
+        net_profit = (equity.iloc[-1] - 10000) if len(equity > 0) else 0
 
-            return {
-                "orders": orders,
-                "winning_ratio": winning_ratio,
-                "net_profit": net_profit,
-                "average_gain": average_gain,
-                "average_loss": average_loss,
-                "profit_factor": profit_factor,
-            }
+        return {
+            "orders": orders,
+            "winning_ratio": winning_ratio,
+            "net_profit": net_profit,
+            "average_gain": average_gain,
+            "average_loss": average_loss,
+            "profit_factor": profit_factor,
+        }

@@ -163,5 +163,3 @@ class TestStrategy(Backtester):
         buy_risk = self._adjusted_take_profit * (df.buy_start - df.stop)
         df.loc[df.signal == 1, 'profit1'] = df.buy_start + buy_risk
         df.loc[df.signal == 1, 'profit2'] = df.profit1 + buy_risk
-
-        return df
