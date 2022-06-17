@@ -261,6 +261,6 @@ class TestStrategy(Backtester):
         df2.loc[df2.status.isin(
             ['stop', 'even', 'profit2']), 'pnl'] = df2.pnl - self._trading_cost
         self._results = df2.loc[df2.pnl != 0, [
-            'timestamp', 'pnl']].reset_index(drop=True)
+            'timestamp', 'pnl', 'status', 'start_offset', 'stop_offset']].reset_index(drop=True)
 
         self._test_execution_time = time.time() - start

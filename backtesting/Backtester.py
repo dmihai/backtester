@@ -90,6 +90,9 @@ class Backtester:
 
         else:
             print("Please run .test() first")
+    
+    def get_pnl(self):
+        return self._results
 
     def get_init_execution_time(self):
         return self._init_execution_time
