@@ -5,7 +5,7 @@ import numpy as np
 import time
 
 
-class TestStrategy(Backtester):
+class EMAPullbackStrategy(Backtester):
     def __init__(self, asset, year, timeframe='M5', timeframe_low='H1',
                  lowres_ema_1=8, lowres_ema_2=21,
                  hires_ema_1=8, hires_ema_2=13, hires_ema_3=21,
