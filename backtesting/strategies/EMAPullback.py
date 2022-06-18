@@ -9,7 +9,7 @@ class EMAPullback(Backtester):
     def __init__(self, asset, year, timeframe='M5', timeframe_low='H1',
                  lowres_ema_1=8, lowres_ema_2=21,
                  hires_ema_1=8, hires_ema_2=13, hires_ema_3=21,
-                 start_offset=3, stop_offset=3,
+                 entry_offset=3, stop_offset=3,
                  min_diff_emas=1.5, max_ratio_emas=0.2,
                  profit1_keep_ratio=0.5, adjusted_take_profit=1,
                  trading_cost=0.0005, pip_value=0.0001):
@@ -22,7 +22,7 @@ class EMAPullback(Backtester):
         self._hires_ema_1 = hires_ema_1
         self._hires_ema_2 = hires_ema_2
         self._hires_ema_3 = hires_ema_3
-        self._start_offset = start_offset
+        self._entry_offset = entry_offset
         self._stop_offset = stop_offset
         self._min_diff_emas = min_diff_emas
         self._max_ratio_emas = max_ratio_emas
@@ -45,8 +45,8 @@ class EMAPullback(Backtester):
         df['stop'] = 0.0
         df['profit1'] = 0.0
         df['profit2'] = 0.0
-        df['start_offset'] = 0
-        df['stop_offset'] = 0
+        df['begin_offset'] = 0
+        df['end_offset'] = 0
         df['status'] = ''
         df['pnl'] = 0.0
 
@@ -74,7 +74,7 @@ class EMAPullback(Backtester):
 
         frame_minutes = frames[self._timeframe_low]
         min_diff_emas = self._min_diff_emas * self._pip_value
-        start_offset = self._start_offset * self._pip_value
+        entry_offset = self._entry_offset * self._pip_value
         stop_offset = self._stop_offset * self._pip_value
 
         sell_timestamps = df_low[(df_low.ema_1 < df_low.ema_2) &
@@ -146,14 +146,14 @@ class EMAPullback(Backtester):
                 'signal'
                 ] = 1
 
-        df.loc[df.signal == -1, 'sell_start'] = df.sell_start - start_offset
+        df.loc[df.signal == -1, 'sell_start'] = df.sell_start - entry_offset
         df.loc[df.signal == -1, 'stop'] = df.high_price + stop_offset
 
         sell_risk = self._adjusted_take_profit * (df.stop - df.sell_start)
         df.loc[df.signal == -1, 'profit1'] = df.sell_start - sell_risk
         df.loc[df.signal == -1, 'profit2'] = df.profit1 - sell_risk
 
-        df.loc[df.signal == 1, 'buy_start'] = df.buy_start + start_offset
+        df.loc[df.signal == 1, 'buy_start'] = df.buy_start + entry_offset
         df.loc[df.signal == 1, 'stop'] = df.low_price - stop_offset
 
         buy_risk = self._adjusted_take_profit * (df.buy_start - df.stop)

@@ -8,7 +8,7 @@ def pretty(d, indent=0):
       else:
          print('\t' * (indent+1) + str(value))
 
-test = EMAPullback('XAUUSD', 2022, start_offset=0, trading_cost=0.1, pip_value=0.01)
+test = EMAPullback('XAUUSD', 2022, entry_offset=0, trading_cost=0.1, pip_value=0.01)
 test.test()
 
 print(test.get_groupby_status())

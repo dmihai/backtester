@@ -163,7 +163,7 @@ class Backtester:
                         stop_index = i
 
             if mode == 0 and status != '':
-                df.loc[trading_index, ['status', 'start_offset', 'stop_offset']] = [
+                df.loc[trading_index, ['status', 'begin_offset', 'end_offset']] = [
                     status, start_index - trading_index, stop_index - trading_index
                 ]
                 status = ''
@@ -192,7 +192,7 @@ class Backtester:
         df.loc[df.status.isin(
             ['stop', 'even', 'profit2']), 'pnl'] = df.pnl - self._trading_cost
         self._results = df.loc[df.pnl != 0, [
-            'timestamp', 'pnl', 'status', 'start_offset', 'stop_offset']].reset_index(drop=True)
+            'timestamp', 'pnl', 'status', 'begin_offset', 'end_offset']].reset_index(drop=True)
     
     def _get_session_results(self, results):
         orders = results.timestamp.count()
