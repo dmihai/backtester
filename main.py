@@ -30,7 +30,7 @@ def get_next_job(db):
 def process_job(db, job):
     print(f"Processing job {job['id']}")
 
-    module = importlib.import_module("backtesting." + job['strategy'])
+    module = importlib.import_module("backtesting.strategies." + job['strategy'])
     class_ = getattr(module, job['strategy'])
 
     test = class_(**job['params'])
