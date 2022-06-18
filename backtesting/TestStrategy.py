@@ -24,12 +24,10 @@ class TestStrategy(Backtester):
         self._hires_ema_3 = hires_ema_3
         self._start_offset = start_offset
         self._stop_offset = stop_offset
-        self._profit1_keep_ratio = profit1_keep_ratio
         self._min_diff_emas = min_diff_emas
         self._max_ratio_emas = max_ratio_emas
-        self._adjusted_take_profit = adjusted_take_profit
 
-        super().__init__(asset, year, timeframe, trading_cost, pip_value)
+        super().__init__(asset, year, timeframe, profit1_keep_ratio, adjusted_take_profit, trading_cost, pip_value)
 
         self._data_low = self.acquire_data(timeframe_low)
         self._data_low = self.prepare_data_low()
@@ -102,17 +100,15 @@ class TestStrategy(Backtester):
                         timedelta(minutes=frame_minutes)).values
 
         # https://stackoverflow.com/questions/44367672/best-way-to-join-merge-by-range-in-pandas/44601120#44601120
-        sell_index, j = np.where(
+        sell_index, _ = np.where(
             (timestamp_vals[:, None] >= sell_start_time) &
             (timestamp_vals[:, None] < sell_end_time)
         )
 
-        buy_index, j = np.where(
+        buy_index, _ = np.where(
             (timestamp_vals[:, None] >= buy_start_time) &
             (timestamp_vals[:, None] < buy_end_time)
         )
-
-        # df.loc[i, :]
 
         diff_ema_21 = df.ema_2 - df.ema_1
         diff_ema_31 = df.ema_3 - df.ema_1

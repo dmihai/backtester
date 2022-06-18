@@ -1,17 +1,17 @@
 import pandas as pd
 import time
-import matplotlib.pyplot as plt
-from datetime import datetime
 
 import config
 import constants
 
 
 class Backtester:
-    def __init__(self, asset, year, timeframe, trading_cost, pip_value):
+    def __init__(self, asset, year, timeframe, profit1_keep_ratio, adjusted_take_profit, trading_cost, pip_value):
         self._asset = asset
         self._year = year
         self._timeframe = timeframe
+        self._profit1_keep_ratio = profit1_keep_ratio
+        self._adjusted_take_profit = adjusted_take_profit
         self._trading_cost = trading_cost
         self._pip_value = pip_value
 
