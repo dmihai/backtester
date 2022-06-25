@@ -15,7 +15,8 @@ class Backtester:
         self._trading_cost = trading_cost
         self._pip_value = pip_value
 
-        self._data = {}
+        self._data = pd.DataFrame()
+        self._positions = pd.DataFrame()
         self._results = None
 
         self._data = self.acquire_data(self._timeframe)
@@ -77,7 +78,7 @@ class Backtester:
         start = time.time()
 
         self._calculate_triggers()
-        self._trade()
+        self._trade_pos()
         self._calculate_pnl()
 
         self._test_execution_time = time.time() - start
@@ -167,6 +168,56 @@ class Backtester:
                     status, start_index - trading_index, stop_index - trading_index
                 ]
                 status = ''
+    
+    def _trade_pos(self):
+        df = self._data
+        all_pos = self._positions
+
+        mode = 0
+        status = ''
+        #trading = None
+        trading_index = 0
+        start_index = 0
+        stop_index = 0
+
+        # index_list = []
+        trade = None
+
+        for i, row in df.iterrows():  # itertuples
+            if trade != None:
+                # search for stop
+                if status == 'trading' and row['high_price'] >= trade['stop'] and row['low_price'] <= trade['stop']:
+                    trade = None
+                    status = 'stop'
+
+                # search for profit1
+                if status == 'trading' and row['high_price'] >= trade['profit1'] and row['low_price'] <= trade['profit1']:
+                    status = 'profit1'
+
+                # search for break even
+                if status == 'profit1' and row['high_price'] >= trade['stop'] and row['low_price'] <= trade['stop']:
+                    trade = None
+                    status = 'even'
+                
+                # search for profit2
+                if status == 'profit1' and row['high_price'] >= trade['profit2'] and row['low_price'] <= trade['profit2']:
+                    trade = None
+                    status = 'profit2'
+            else:
+                if row['sig'] != 0:
+                    all_pos.loc[(all_pos.status == '') & (all_pos.signal_offset == i), 'status'] = 'active'
+                
+                # search for stop
+                hit_stop = (all_pos.status == 'active') & (all_pos.stop >= row['low_price']) & (all_pos.stop <= row['high_price'])
+                all_pos.loc[hit_stop, 'status'] = 'cancel'
+
+                # search for entry
+                hit_entry = (all_pos.status == 'active') & (all_pos.entry >= row['low_price']) & (all_pos.entry <= row['high_price'])
+                tradeList = all_pos[hit_entry].tail(1).to_dict('records')
+                if len(tradeList) == 1:
+                    trade = tradeList[0]
+                    status = 'trading'
+
 
     def _calculate_pnl(self):
         df = self._data

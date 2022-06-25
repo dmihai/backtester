@@ -1,6 +1,7 @@
 from backtesting.Backtester import Backtester
 from constants import frames
 from datetime import timedelta
+import pandas as pd
 import numpy as np
 import time
 
@@ -49,6 +50,7 @@ class EMAPullback(Backtester):
         df['end_offset'] = 0
         df['status'] = ''
         df['pnl'] = 0.0
+        df['sig'] = 0
 
         for i in range(1, 6):
             df.loc[df.shift(i).low_price < df.sell_start,
@@ -159,3 +161,24 @@ class EMAPullback(Backtester):
         buy_risk = self._adjusted_take_profit * (df.buy_start - df.stop)
         df.loc[df.signal == 1, 'profit1'] = df.buy_start + buy_risk
         df.loc[df.signal == 1, 'profit2'] = df.profit1 + buy_risk
+
+        df.loc[df.signal != 0, 'sig'] = 1
+
+        sell_sig = df.loc[df.signal == -1]
+        sell_pos = pd.concat(
+            [sell_sig.index.to_series(), sell_sig.sell_start, sell_sig.stop, sell_sig.stop, sell_sig.profit1, sell_sig.profit2],
+            keys=['signal_offset', 'entry', 'stop', 'cancel', 'profit1', 'profit2'],
+            axis=1
+        )
+        sell_pos['type'] = 'sell'
+
+        buy_sig = df.loc[df.signal == 1]
+        buy_pos = pd.concat(
+            [buy_sig.index.to_series(), buy_sig.sell_start, buy_sig.stop, buy_sig.stop, buy_sig.profit1, buy_sig.profit2],
+            keys=['signal_offset', 'entry', 'stop', 'cancel', 'profit1', 'profit2'],
+            axis=1
+        )
+        buy_pos['type'] = 'buy'
+
+        self._positions = pd.concat([sell_pos, buy_pos]).sort_values('signal_offset', ignore_index=True).reset_index()
+        self._positions['status'] = ''
