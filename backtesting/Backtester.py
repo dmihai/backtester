@@ -182,22 +182,13 @@ class Backtester:
     def _calculate_pnl(self):
         df = self._data
 
-        df.loc[(df.signal == -1) & (df.status == 'stop'),
+        df.loc[(df.signal != 0) & (df.status == 'stop'),
                 'pnl'] = -abs(df.entry - df.stop)
         profit1 = self._profit1_keep_ratio * abs(df.profit1 - df.entry)
         profit2 = (1 - self._profit1_keep_ratio) * \
             abs(df.profit2 - df.entry)
-        df.loc[(df.signal == -1) & (df.status == 'even'), 'pnl'] = profit1
-        df.loc[(df.signal == -1) & (df.status == 'profit2'),
-                'pnl'] = profit1 + profit2
-
-        df.loc[(df.signal == 1) & (df.status == 'stop'),
-                'pnl'] = -abs(df.stop - df.entry)
-        profit1 = self._profit1_keep_ratio * abs(df.profit1 - df.entry)
-        profit2 = (1 - self._profit1_keep_ratio) * \
-            abs(df.profit2 - df.entry)
-        df.loc[(df.signal == 1) & (df.status == 'even'), 'pnl'] = profit1
-        df.loc[(df.signal == 1) & (df.status == 'profit2'),
+        df.loc[(df.signal != 0) & (df.status == 'even'), 'pnl'] = profit1
+        df.loc[(df.signal != 0) & (df.status == 'profit2'),
                 'pnl'] = profit1 + profit2
 
         df.loc[df.status.isin(
