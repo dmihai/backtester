@@ -35,26 +35,19 @@ class EMAPullback(Backtester):
         self._init_execution_time = time.time() - start
 
     def prepare_data(self):
-        df = self._data.copy()
+        df = super().prepare_data()
+
         df['ema_1'] = df['close_price'].ewm(span=self._hires_ema_1).mean()
         df['ema_2'] = df['close_price'].ewm(span=self._hires_ema_2).mean()
         df['ema_3'] = df['close_price'].ewm(span=self._hires_ema_3).mean()
-        df['signal'] = 0
-        df['sell_start'] = df.low_price
-        df['buy_start'] = df.high_price
-        df['stop'] = 0.0
-        df['profit1'] = 0.0
-        df['profit2'] = 0.0
-        df['begin_offset'] = 0
-        df['end_offset'] = 0
-        df['status'] = ''
-        df['pnl'] = 0.0
+        df['sell_entry'] = df.low_price
+        df['buy_entry'] = df.high_price
 
         for i in range(1, 6):
-            df.loc[df.shift(i).low_price < df.sell_start,
-                   'sell_start'] = df.shift(i).low_price
-            df.loc[df.shift(i).high_price > df.buy_start,
-                   'buy_start'] = df.shift(i).high_price
+            df.loc[df.shift(i).low_price < df.sell_entry,
+                   'sell_entry'] = df.shift(i).low_price
+            df.loc[df.shift(i).high_price > df.buy_entry,
+                   'buy_entry'] = df.shift(i).high_price
 
         return df
 
@@ -124,7 +117,7 @@ class EMAPullback(Backtester):
                 (df.shift(1).ema_1 < df.shift(1).ema_2) &
                 (df.shift(1).ema_2 < df.shift(1).ema_3) &
                 (df.shift(1).high_price < df.shift(1).ema_1) &
-                (df.sell_start < df.low_price),
+                (df.sell_entry < df.low_price),
                 'signal'
                 ] = -1
 
@@ -142,20 +135,20 @@ class EMAPullback(Backtester):
                 (df.shift(1).ema_1 > df.shift(1).ema_2) &
                 (df.shift(1).ema_2 > df.shift(1).ema_3) &
                 (df.shift(1).low_price > df.shift(1).ema_1) &
-                (df.buy_start > df.high_price),
+                (df.buy_entry > df.high_price),
                 'signal'
                 ] = 1
 
-        df.loc[df.signal == -1, 'sell_start'] = df.sell_start - entry_offset
+        df.loc[df.signal == -1, 'entry'] = df.sell_entry - entry_offset
         df.loc[df.signal == -1, 'stop'] = df.high_price + stop_offset
 
-        sell_risk = self._adjusted_take_profit * (df.stop - df.sell_start)
-        df.loc[df.signal == -1, 'profit1'] = df.sell_start - sell_risk
+        sell_risk = self._adjusted_take_profit * (df.stop - df.entry)
+        df.loc[df.signal == -1, 'profit1'] = df.entry - sell_risk
         df.loc[df.signal == -1, 'profit2'] = df.profit1 - sell_risk
 
-        df.loc[df.signal == 1, 'buy_start'] = df.buy_start + entry_offset
+        df.loc[df.signal == 1, 'entry'] = df.buy_entry + entry_offset
         df.loc[df.signal == 1, 'stop'] = df.low_price - stop_offset
 
-        buy_risk = self._adjusted_take_profit * (df.buy_start - df.stop)
-        df.loc[df.signal == 1, 'profit1'] = df.buy_start + buy_risk
+        buy_risk = self._adjusted_take_profit * (df.entry - df.stop)
+        df.loc[df.signal == 1, 'profit1'] = df.entry + buy_risk
         df.loc[df.signal == 1, 'profit2'] = df.profit1 + buy_risk

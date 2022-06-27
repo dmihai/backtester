@@ -31,7 +31,18 @@ class Backtester:
                            parse_dates=['timestamp'])
 
     def prepare_data(self):
-        return self._data.copy()
+        df = self._data.copy()
+        df['signal'] = 0
+        df['stop'] = 0.0
+        df['entry'] = 0.0
+        df['profit1'] = 0.0
+        df['profit2'] = 0.0
+        df['begin_offset'] = 0
+        df['end_offset'] = 0
+        df['status'] = ''
+        df['pnl'] = 0.0
+
+        return df
 
     def get_data(self):
         return self._data
@@ -112,7 +123,7 @@ class Backtester:
                     mode = 0
                     status = 'cancel'
                     stop_index = i
-                elif row['low_price'] <= trading['sell_start']:
+                elif row['low_price'] <= trading['entry']:
                     mode = -2
                     status = 'trading'
                     start_index = i
@@ -121,7 +132,7 @@ class Backtester:
                     mode = 0
                     status = 'cancel'
                     stop_index = i
-                elif row['high_price'] >= trading['buy_start']:
+                elif row['high_price'] >= trading['entry']:
                     mode = 2
                     status = 'trading'
                     start_index = i
@@ -133,7 +144,7 @@ class Backtester:
                         stop_index = i
                     elif row['low_price'] <= trading['profit1']:
                         status = 'profit1'
-                        trading['stop'] = trading['sell_start']
+                        trading['stop'] = trading['entry']
                 if status == 'profit1':
                     if row['high_price'] >= trading['stop']:
                         mode = 0
@@ -151,7 +162,7 @@ class Backtester:
                         stop_index = i
                     elif row['high_price'] >= trading['profit1']:
                         status = 'profit1'
-                        trading['stop'] = trading['buy_start']
+                        trading['stop'] = trading['entry']
                 if status == 'profit1':
                     if row['low_price'] <= trading['stop']:
                         mode = 0
@@ -172,19 +183,19 @@ class Backtester:
         df = self._data
 
         df.loc[(df.signal == -1) & (df.status == 'stop'),
-                'pnl'] = -abs(df.sell_start - df.stop)
-        profit1 = self._profit1_keep_ratio * abs(df.profit1 - df.sell_start)
+                'pnl'] = -abs(df.entry - df.stop)
+        profit1 = self._profit1_keep_ratio * abs(df.profit1 - df.entry)
         profit2 = (1 - self._profit1_keep_ratio) * \
-            abs(df.profit2 - df.sell_start)
+            abs(df.profit2 - df.entry)
         df.loc[(df.signal == -1) & (df.status == 'even'), 'pnl'] = profit1
         df.loc[(df.signal == -1) & (df.status == 'profit2'),
                 'pnl'] = profit1 + profit2
 
         df.loc[(df.signal == 1) & (df.status == 'stop'),
-                'pnl'] = -abs(df.stop - df.buy_start)
-        profit1 = self._profit1_keep_ratio * abs(df.profit1 - df.buy_start)
+                'pnl'] = -abs(df.stop - df.entry)
+        profit1 = self._profit1_keep_ratio * abs(df.profit1 - df.entry)
         profit2 = (1 - self._profit1_keep_ratio) * \
-            abs(df.profit2 - df.buy_start)
+            abs(df.profit2 - df.entry)
         df.loc[(df.signal == 1) & (df.status == 'even'), 'pnl'] = profit1
         df.loc[(df.signal == 1) & (df.status == 'profit2'),
                 'pnl'] = profit1 + profit2
