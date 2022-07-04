@@ -74,7 +74,7 @@ class Backtester:
 
         else:
             print("Please run .test() first")
-    
+
     def get_pnl(self):
         return self._results
 
@@ -98,7 +98,7 @@ class Backtester:
             pass
         else:
             print("Please run test() first.")
-    
+
     def _calculate_triggers(self):
         pass
 
@@ -112,63 +112,71 @@ class Backtester:
         start_index = 0
         stop_index = 0
 
-        for i, row in df.iterrows():
+        rows = zip(df['signal'], df['high_price'], df['low_price'],
+                   df['entry'], df['stop'], df['profit1'], df['profit2'])
+
+        for i, (signal, high_price, low_price, entry, stop, profit1, profit2) in enumerate(rows):
             if mode == 0:  # looking for a signal
-                if row['signal'] != 0:
-                    mode = row['signal']
-                    trading = row
+                if signal != 0:
+                    mode = signal
+                    trading = {
+                        'stop': stop,
+                        'entry': entry,
+                        'profit1': profit1,
+                        'profit2': profit2,
+                    }
                     trading_index = i
             elif mode == -1:  # looking for an entry after a sell signal
-                if row['high_price'] >= trading['stop']:
+                if high_price >= trading['stop']:
                     mode = 0
                     status = 'cancel'
                     stop_index = i
-                elif row['low_price'] <= trading['entry']:
+                elif low_price <= trading['entry']:
                     mode = -2
                     status = 'trading'
                     start_index = i
             elif mode == 1:  # looking for an entry after a buy signal
-                if row['low_price'] <= trading['stop']:
+                if low_price <= trading['stop']:
                     mode = 0
                     status = 'cancel'
                     stop_index = i
-                elif row['high_price'] >= trading['entry']:
+                elif high_price >= trading['entry']:
                     mode = 2
                     status = 'trading'
                     start_index = i
             elif mode == -2:  # in a sell trading
                 if status == 'trading':
-                    if row['high_price'] >= trading['stop']:
+                    if high_price >= trading['stop']:
                         mode = 0
                         status = 'stop'
                         stop_index = i
-                    elif row['low_price'] <= trading['profit1']:
+                    elif low_price <= trading['profit1']:
                         status = 'profit1'
                         trading['stop'] = trading['entry']
                 if status == 'profit1':
-                    if row['high_price'] >= trading['stop']:
+                    if high_price >= trading['stop']:
                         mode = 0
                         status = 'even'
                         stop_index = i
-                    elif row['low_price'] <= trading['profit2']:
+                    elif low_price <= trading['profit2']:
                         mode = 0
                         status = 'profit2'
                         stop_index = i
             elif mode == 2:  # in a buy trading
                 if status == 'trading':
-                    if row['low_price'] <= trading['stop']:
+                    if low_price <= trading['stop']:
                         mode = 0
                         status = 'stop'
                         stop_index = i
-                    elif row['high_price'] >= trading['profit1']:
+                    elif high_price >= trading['profit1']:
                         status = 'profit1'
                         trading['stop'] = trading['entry']
                 if status == 'profit1':
-                    if row['low_price'] <= trading['stop']:
+                    if low_price <= trading['stop']:
                         mode = 0
                         status = 'even'
                         stop_index = i
-                    elif row['high_price'] >= trading['profit2']:
+                    elif high_price >= trading['profit2']:
                         mode = 0
                         status = 'profit2'
                         stop_index = i
@@ -183,19 +191,19 @@ class Backtester:
         df = self._data
 
         df.loc[(df.signal != 0) & (df.status == 'stop'),
-                'pnl'] = -abs(df.entry - df.stop)
+               'pnl'] = -abs(df.entry - df.stop)
         profit1 = self._profit1_keep_ratio * abs(df.profit1 - df.entry)
         profit2 = (1 - self._profit1_keep_ratio) * \
             abs(df.profit2 - df.entry)
         df.loc[(df.signal != 0) & (df.status == 'even'), 'pnl'] = profit1
         df.loc[(df.signal != 0) & (df.status == 'profit2'),
-                'pnl'] = profit1 + profit2
+               'pnl'] = profit1 + profit2
 
         df.loc[df.status.isin(
             ['stop', 'even', 'profit2']), 'pnl'] = df.pnl - self._trading_cost
         self._results = df.loc[df.pnl != 0, [
             'timestamp', 'pnl', 'status', 'begin_offset', 'end_offset']].reset_index(drop=True)
-    
+
     def _get_session_results(self, results):
         orders = results.timestamp.count()
         winning_orders = results[results.pnl >= 0].timestamp.count()
