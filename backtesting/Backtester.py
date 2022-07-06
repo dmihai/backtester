@@ -105,87 +105,105 @@ class Backtester:
     def _trade(self):
         df = self._data
 
-        mode = 0
-        status = ''
-        trading = None
-        trading_index = 0
-        start_index = 0
-        stop_index = 0
+        def is_target_hit(target, high_price, low_price):
+            return low_price <= target and target <= high_price
 
+        status = ''
+        trade = {}
+        expiry = 2
+        orders = []
+        finished_orders = []
         rows = zip(df['signal'], df['high_price'], df['low_price'],
                    df['entry'], df['stop'], df['profit1'], df['profit2'])
 
         for i, (signal, high_price, low_price, entry, stop, profit1, profit2) in enumerate(rows):
-            if mode == 0:  # looking for a signal
+            if status == '':  # not in a trade
                 if signal != 0:
-                    mode = signal
-                    trading = {
+                    orders.append({
+                        'index': i,
+                        'signal': signal,
                         'stop': stop,
                         'entry': entry,
                         'profit1': profit1,
                         'profit2': profit2,
-                    }
-                    trading_index = i
-            elif mode == -1:  # looking for an entry after a sell signal
-                if high_price >= trading['stop']:
-                    mode = 0
-                    status = 'cancel'
-                    stop_index = i
-                elif low_price <= trading['entry']:
-                    mode = -2
-                    status = 'trading'
-                    start_index = i
-            elif mode == 1:  # looking for an entry after a buy signal
-                if low_price <= trading['stop']:
-                    mode = 0
-                    status = 'cancel'
-                    stop_index = i
-                elif high_price >= trading['entry']:
-                    mode = 2
-                    status = 'trading'
-                    start_index = i
-            elif mode == -2:  # in a sell trading
-                if status == 'trading':
-                    if high_price >= trading['stop']:
-                        mode = 0
-                        status = 'stop'
-                        stop_index = i
-                    elif low_price <= trading['profit1']:
-                        status = 'profit1'
-                        trading['stop'] = trading['entry']
-                if status == 'profit1':
-                    if high_price >= trading['stop']:
-                        mode = 0
-                        status = 'even'
-                        stop_index = i
-                    elif low_price <= trading['profit2']:
-                        mode = 0
-                        status = 'profit2'
-                        stop_index = i
-            elif mode == 2:  # in a buy trading
-                if status == 'trading':
-                    if low_price <= trading['stop']:
-                        mode = 0
-                        status = 'stop'
-                        stop_index = i
-                    elif high_price >= trading['profit1']:
-                        status = 'profit1'
-                        trading['stop'] = trading['entry']
-                if status == 'profit1':
-                    if low_price <= trading['stop']:
-                        mode = 0
-                        status = 'even'
-                        stop_index = i
-                    elif high_price >= trading['profit2']:
-                        mode = 0
-                        status = 'profit2'
-                        stop_index = i
+                    })
 
-            if mode == 0 and status != '':
-                df.loc[trading_index, ['status', 'begin_offset', 'end_offset']] = [
-                    status, start_index - trading_index, stop_index - trading_index
+                new_cancel_orders = [
+                    order | {
+                        "status": "cancel",
+                        "start_index": i,
+                        "stop_index": i
+                    }
+                    for order in orders
+                    if is_target_hit(order['stop'], high_price, low_price)
                 ]
-                status = ''
+                if len(new_cancel_orders) > 0:
+                    finished_orders.extend(new_cancel_orders)
+
+                new_expire_orders = [
+                    order | {
+                        "status": "expire",
+                        "start_index": i,
+                        "stop_index": i
+                    }
+                    for order in orders
+                    if order['index'] + expiry < i
+                ]
+                if len(new_expire_orders) > 0:
+                    finished_orders.extend(new_expire_orders)
+
+                # remove both expired and cancelled orders
+                orders[:] = [
+                    order for order in orders
+                    if order['index'] + expiry >= i and
+                    not is_target_hit(order['stop'], high_price, low_price)
+                ]
+
+                active_orders = [
+                    order | {"start_index": i}
+                    for order in orders
+                    if is_target_hit(order['entry'], high_price, low_price)
+                ]
+                if len(active_orders) > 0:
+                    # take last order in case there are several
+                    trade = active_orders[-1]
+                    orders[:] = [
+                        order for order in orders
+                        if order['index'] != trade['index']
+                    ]
+                    status = 'trading'
+            else:  # in a trade
+                if status == 'trading':
+                    if is_target_hit(trade['stop'], high_price, low_price):
+                        finished_orders.append(trade | {
+                            "status": "stop",
+                            "stop_index": i,
+                        })
+                        status = ''
+                    elif is_target_hit(trade['profit1'], high_price, low_price):
+                        trade['stop'] = trade['entry']
+                        status = 'profit1'
+
+                if status == 'profit1':
+                    if is_target_hit(trade['stop'], high_price, low_price):
+                        finished_orders.append(trade | {
+                            "status": "even",
+                            "stop_index": i,
+                        })
+                        status = ''
+                    elif is_target_hit(trade['profit2'], high_price, low_price):
+                        finished_orders.append(trade | {
+                            "status": "profit2",
+                            "stop_index": i,
+                        })
+                        status = ''
+
+        for order in finished_orders:
+            df.loc[order['index'], ['status', 'begin_offset', 'end_offset']] = [
+                order['status'],
+                order['start_index'] - order['index'],
+                order['stop_index'] - order['index']
+            ]
 
     def _calculate_pnl(self):
         df = self._data
