@@ -12,7 +12,7 @@ class EMAPullback(Backtester):
                  entry_offset=3, stop_offset=3,
                  min_diff_emas=1.5, max_ratio_emas=0.2,
                  profit1_keep_ratio=0.5, adjusted_take_profit=1,
-                 trading_cost=0.0005, pip_value=0.0001):
+                 trading_cost=0.0005, pip_value=0.0001, signal_expiry=3):
 
         start = time.time()
 
@@ -27,7 +27,8 @@ class EMAPullback(Backtester):
         self._min_diff_emas = min_diff_emas
         self._max_ratio_emas = max_ratio_emas
 
-        super().__init__(asset, year, timeframe, profit1_keep_ratio, adjusted_take_profit, trading_cost, pip_value)
+        super().__init__(asset, year, timeframe, profit1_keep_ratio,
+                         adjusted_take_profit, trading_cost, pip_value, signal_expiry)
 
         self._data_low = self.acquire_data(timeframe_low)
         self._data_low = self.prepare_data_low()
@@ -60,7 +61,7 @@ class EMAPullback(Backtester):
             span=self._lowres_ema_2).mean()
 
         return df_low
-    
+
     def _calculate_triggers(self):
         df_low = self._data_low
         df = self._data
@@ -71,16 +72,17 @@ class EMAPullback(Backtester):
         stop_offset = self._stop_offset * self._pip_value
 
         sell_timestamps = df_low[(df_low.ema_1 < df_low.ema_2) &
-                              (df_low.close_price < df_low.ema_1) &
-                              (df_low.shift(1).ema_1 < df_low.shift(1).ema_2) &
-                              (df_low.shift(1).close_price < df_low.shift(1).ema_1)
-                              ].timestamp + timedelta(minutes=frame_minutes)
+                                 (df_low.close_price < df_low.ema_1) &
+                                 (df_low.shift(1).ema_1 < df_low.shift(1).ema_2) &
+                                 (df_low.shift(1).close_price <
+                                  df_low.shift(1).ema_1)
+                                 ].timestamp + timedelta(minutes=frame_minutes)
 
         buy_timestamps = df_low[(df_low.ema_1 > df_low.ema_2) &
-                             (df_low.open_price > df_low.ema_1) &
-                             (df_low.shift(1).ema_1 > df_low.shift(1).ema_2) &
-                             (df_low.shift(1).open_price > df_low.shift(1).ema_1)
-                             ].timestamp + timedelta(minutes=frame_minutes)
+                                (df_low.open_price > df_low.ema_1) &
+                                (df_low.shift(1).ema_1 > df_low.shift(1).ema_2) &
+                                (df_low.shift(1).open_price > df_low.shift(1).ema_1)
+                                ].timestamp + timedelta(minutes=frame_minutes)
 
         timestamp_vals = df.timestamp.values
 
@@ -107,37 +109,37 @@ class EMAPullback(Backtester):
         diff_ema_31 = df.ema_3 - df.ema_1
         diff_ema_32 = df.ema_3 - df.ema_2
         df.loc[(df.index.isin(sell_index)) &
-                (df.ema_1 < df.ema_2) &
-                (df.ema_2 < df.ema_3) &
-                (df.ema_1 < df.high_price) &
-                (df.close_price < df.ema_3) &
-                (diff_ema_21 > min_diff_emas) &
-                (diff_ema_32 > min_diff_emas) &
-                (abs((diff_ema_21 / diff_ema_31) - 0.5) < self._max_ratio_emas) &
-                (df.shift(1).ema_1 < df.shift(1).ema_2) &
-                (df.shift(1).ema_2 < df.shift(1).ema_3) &
-                (df.shift(1).high_price < df.shift(1).ema_1) &
-                (df.sell_entry < df.low_price),
-                'signal'
-                ] = -1
+               (df.ema_1 < df.ema_2) &
+               (df.ema_2 < df.ema_3) &
+               (df.ema_1 < df.high_price) &
+               (df.close_price < df.ema_3) &
+               (diff_ema_21 > min_diff_emas) &
+               (diff_ema_32 > min_diff_emas) &
+               (abs((diff_ema_21 / diff_ema_31) - 0.5) < self._max_ratio_emas) &
+               (df.shift(1).ema_1 < df.shift(1).ema_2) &
+               (df.shift(1).ema_2 < df.shift(1).ema_3) &
+               (df.shift(1).high_price < df.shift(1).ema_1) &
+               (df.sell_entry < df.low_price),
+               'signal'
+               ] = -1
 
         diff_ema_12 = df.ema_1 - df.ema_2
         diff_ema_13 = df.ema_1 - df.ema_3
         diff_ema_23 = df.ema_2 - df.ema_3
         df.loc[(df.index.isin(buy_index)) &
-                (df.ema_1 > df.ema_2) &
-                (df.ema_2 > df.ema_3) &
-                (df.ema_1 > df.low_price) &
-                (df.close_price > df.ema_3) &
-                (diff_ema_12 > min_diff_emas) &
-                (diff_ema_23 > min_diff_emas) &
-                (abs((diff_ema_12 / diff_ema_13) - 0.5) < self._max_ratio_emas) &
-                (df.shift(1).ema_1 > df.shift(1).ema_2) &
-                (df.shift(1).ema_2 > df.shift(1).ema_3) &
-                (df.shift(1).low_price > df.shift(1).ema_1) &
-                (df.buy_entry > df.high_price),
-                'signal'
-                ] = 1
+               (df.ema_1 > df.ema_2) &
+               (df.ema_2 > df.ema_3) &
+               (df.ema_1 > df.low_price) &
+               (df.close_price > df.ema_3) &
+               (diff_ema_12 > min_diff_emas) &
+               (diff_ema_23 > min_diff_emas) &
+               (abs((diff_ema_12 / diff_ema_13) - 0.5) < self._max_ratio_emas) &
+               (df.shift(1).ema_1 > df.shift(1).ema_2) &
+               (df.shift(1).ema_2 > df.shift(1).ema_3) &
+               (df.shift(1).low_price > df.shift(1).ema_1) &
+               (df.buy_entry > df.high_price),
+               'signal'
+               ] = 1
 
         df.loc[df.signal == -1, 'entry'] = df.sell_entry - entry_offset
         df.loc[df.signal == -1, 'stop'] = df.high_price + stop_offset

@@ -6,7 +6,9 @@ import constants
 
 
 class Backtester:
-    def __init__(self, asset, year, timeframe, profit1_keep_ratio, adjusted_take_profit, trading_cost, pip_value):
+    def __init__(self, asset, year, timeframe,
+                 profit1_keep_ratio, adjusted_take_profit,
+                 trading_cost, pip_value, signal_expiry):
         self._asset = asset
         self._year = year
         self._timeframe = timeframe
@@ -14,6 +16,7 @@ class Backtester:
         self._adjusted_take_profit = adjusted_take_profit
         self._trading_cost = trading_cost
         self._pip_value = pip_value
+        self._signal_expiry = signal_expiry
 
         self._data = {}
         self._results = None
@@ -110,7 +113,6 @@ class Backtester:
 
         status = ''
         trade = {}
-        expiry = 2
         orders = []
         finished_orders = []
         rows = zip(df['signal'], df['high_price'], df['low_price'],
@@ -147,7 +149,7 @@ class Backtester:
                         "stop_index": i
                     }
                     for order in orders
-                    if order['index'] + expiry < i
+                    if order['index'] + self._signal_expiry < i
                 ]
                 if len(new_expire_orders) > 0:
                     finished_orders.extend(new_expire_orders)
@@ -155,7 +157,7 @@ class Backtester:
                 # remove both expired and cancelled orders
                 orders[:] = [
                     order for order in orders
-                    if order['index'] + expiry >= i and
+                    if order['index'] + self._signal_expiry >= i and
                     not is_target_hit(order['stop'], high_price, low_price)
                 ]
 
