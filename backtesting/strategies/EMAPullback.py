@@ -5,6 +5,7 @@ import numpy as np
 import time
 
 
+# https://www.youtube.com/watch?v=zhEukjCzXwM
 class EMAPullback(Backtester):
     def __init__(self, asset, year, timeframe='M5', timeframe_low='H1',
                  lowres_ema_1=8, lowres_ema_2=21,
