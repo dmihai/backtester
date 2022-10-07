@@ -56,3 +56,7 @@ class TrendCycleEntry(Backtester):
     def _calculate_triggers(self):
         df = self._data
 
+        df.loc[((df.low_ha > df.high_ha) & (df.low_ha <= df.bollinger_down) & (df.bollinger_down <= df.high_ha)) | 
+               ((df.low_ha < df.high_ha) & (df.low_ha <= df.bollinger_up) & (df.bollinger_up <= df.high_ha)), 'bollinger_touch'] = 1
+        
+        print(df[df.bollinger_touch==1])
