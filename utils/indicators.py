@@ -23,7 +23,7 @@ def add_resistance(df, max_radius=200):
 
     return df
 
-def add_rsi(df, periods=14, column='close_price', ema=True):
+def add_rsi(df, periods=14, ema=True, column='close_price'):
     close_delta = df[column].diff()
 
     up = close_delta.clip(lower=0)
@@ -40,5 +40,18 @@ def add_rsi(df, periods=14, column='close_price', ema=True):
 
     rsi = ma_up / ma_down
     df['rsi'] = 100 - (100 / (1 + rsi))
+
+    return df
+
+def add_stochastic(df, stoch_length=14, k_length=3, d_length=3, column='close_price'):
+    data = df[column]
+
+    min_val = data.rolling(window=stoch_length, center=False).min()
+    max_val = data.rolling(window=stoch_length, center=False).max()
+
+    stoch = ((data - min_val) / (max_val - min_val)) * 100
+
+    df['stoch_k'] = stoch.rolling(window=k_length, center=False).mean()
+    df['stoch_d'] = df['stoch_k'].rolling(window=d_length, center=False).mean()
 
     return df
