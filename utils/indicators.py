@@ -23,6 +23,18 @@ def add_resistance(df, max_radius=200):
 
     return df
 
+def add_heikin_ashi(df):
+    df['close_ha'] = (df.open_price + df.high_price + df.low_price + df.close_price) / 4
+    df['open_ha'] = (df.open_price + df.close_price) / 2
+
+    for i in range(1, len(df)):
+        df.at[i, 'open_ha'] = (df.at[i-1, 'open_ha'] + df.at[i-1, 'close_ha']) / 2
+
+    df['high_ha'] = df[['open_ha', 'close_ha', 'high_price']].max(axis=1)
+    df['low_ha'] = df[['open_ha', 'close_ha', 'low_price']].min(axis=1)
+
+    return df
+
 def add_rsi(df, periods=14, ema=True, column='close_price'):
     close_delta = df[column].diff()
 

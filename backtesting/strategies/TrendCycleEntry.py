@@ -1,6 +1,6 @@
 from backtesting.Backtester import Backtester
 from constants import frames
-from utils.indicators import add_rsi, add_stochastic
+from utils.indicators import add_heikin_ashi, add_rsi, add_stochastic
 import time
 
 
@@ -32,23 +32,20 @@ class TrendCycleEntry(Backtester):
         df = super().prepare_data()
 
         # Heikin Ashi
-        df['open_ha'] = (df.shift(1).open_price + df.shift(1).close_price) / 2
-        df['close_ha'] = (df.open_price + df.high_price + df.low_price + df.close_price) / 4
-        df['high_ha'] = df[['open_ha', 'close_ha', 'high_price']].max(axis=1)
-        df['low_ha'] = df[['open_ha', 'close_ha', 'low_price']].min(axis=1)
+        df = add_heikin_ashi(df)
 
         # Moving Averages
-        df['low_ma'] = df['close_ha'].ewm(span=self._low_ma).mean()
-        df['high_ma'] = df['close_ha'].rolling(self._high_ma).mean()
+        df['low_ma'] = df['close_price'].ewm(span=self._low_ma).mean()
+        df['high_ma'] = df['close_price'].rolling(self._high_ma).mean()
 
         # Bollinger Bands
-        df['bollinger_sma'] = df['close_ha'].rolling(self._bollinger_ma).mean()
-        df['bollinger_std'] = df['close_ha'].rolling(self._bollinger_ma).std()
-        df['bollinger_up'] = df['bollinger_sma'] + (df['bollinger_std'] * self._bollinger_std_factor)
-        df['bollinger_down'] = df['bollinger_sma'] - (df['bollinger_std'] * self._bollinger_std_factor)
+        df['bollinger_middle'] = df['close_price'].rolling(self._bollinger_ma).mean()
+        bollinger_std = df['close_price'].rolling(self._bollinger_ma).std()
+        df['bollinger_upper'] = df['bollinger_middle'] + (bollinger_std * self._bollinger_std_factor)
+        df['bollinger_lower'] = df['bollinger_middle'] - (bollinger_std * self._bollinger_std_factor)
 
         # Stochastic RSI
-        df = add_rsi(df, periods=self._rsi_length, ema=True, column='close_ha')
+        df = add_rsi(df, periods=self._rsi_length, ema=True, column='close_price')
         df = add_stochastic(df, stoch_length=self._stoch_length, k_length=self._k_length, d_length=self._d_length, column='rsi')
 
         return df
@@ -56,7 +53,7 @@ class TrendCycleEntry(Backtester):
     def _calculate_triggers(self):
         df = self._data
 
-        df.loc[((df.low_ha > df.high_ha) & (df.low_ha <= df.bollinger_down) & (df.bollinger_down <= df.high_ha)) | 
-               ((df.low_ha < df.high_ha) & (df.low_ha <= df.bollinger_up) & (df.bollinger_up <= df.high_ha)), 'bollinger_touch'] = 1
+        df.loc[((df.low_ha > df.high_ha) & (df.low_ha <= df.bollinger_lower) & (df.bollinger_lower <= df.high_ha)) | 
+               ((df.low_ha < df.high_ha) & (df.low_ha <= df.bollinger_upper) & (df.bollinger_upper <= df.high_ha)), 'bollinger_touch'] = 1
         
-        print(df[df.bollinger_touch==1])
+        print(df.loc[300:, ['timestamp', 'open_price', 'high_price', 'low_price', 'close_price', 'open_ha', 'high_ha', 'low_ha', 'close_ha', 'bollinger_upper', 'bollinger_middle', 'bollinger_lower', 'stoch_k', 'stoch_d']])
