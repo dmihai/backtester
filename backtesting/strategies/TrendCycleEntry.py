@@ -53,7 +53,34 @@ class TrendCycleEntry(Backtester):
     def _calculate_triggers(self):
         df = self._data
 
-        df.loc[((df.low_ha > df.high_ha) & (df.low_ha <= df.bollinger_lower) & (df.bollinger_lower <= df.high_ha)) | 
-               ((df.low_ha < df.high_ha) & (df.low_ha <= df.bollinger_upper) & (df.bollinger_upper <= df.high_ha)), 'bollinger_touch'] = 1
-        
-        print(df.loc[300:, ['timestamp', 'open_price', 'high_price', 'low_price', 'close_price', 'open_ha', 'high_ha', 'low_ha', 'close_ha', 'bollinger_upper', 'bollinger_middle', 'bollinger_lower', 'stoch_k', 'stoch_d']])
+        df['bollinger_touch'] = 0
+        df.loc[(df.low_ma > df.high_ma) & (df.low_ha <= df.bollinger_lower) & (df.bollinger_lower <= df.high_ha), 'bollinger_touch'] = 1 
+        df.loc[(df.low_ma < df.high_ma) & (df.low_ha <= df.bollinger_upper) & (df.bollinger_upper <= df.high_ha), 'bollinger_touch'] = -1
+
+        rows = zip(df['timestamp'], df['open_price'], df['high_price'], df['low_price'],
+                   df['open_ha'], df['high_ha'], df['low_ha'], df['close_ha'],
+                   df['low_ma'], df['high_ma'], df['bollinger_touch'], df['bollinger_lower'], df['bollinger_upper'])
+
+        signal = 0
+        stop = 0.0
+        trigger_found = False
+        for i, (timestamp, open_price, high_price, low_price, open_ha, high_ha, low_ha, close_ha, low_ma, high_ma, bollinger_touch, bollinger_lower, bollinger_upper) in enumerate(rows):
+            if trigger_found:
+                profit1 = (2 * open_price) - stop
+                profit2 = (3 * open_price) - (2 * stop)
+                df.loc[df.timestamp==timestamp, ['signal', 'entry', 'stop', 'profit1', 'profit2']] = [signal, open_price, stop, profit1, profit2]
+                signal = 0
+                trigger_found = False
+
+            if bollinger_touch != 0:
+                signal = bollinger_touch
+                if bollinger_touch == 1:
+                    stop = low_price
+                else:
+                    stop = high_price
+            
+            if (signal == 1 and low_ma <= high_ma) or (signal == -1 and low_ma >= high_ma):
+                signal = 0
+            
+            if (signal == 1 and bollinger_lower < low_ha and open_ha < close_ha) or (signal == -1 and bollinger_upper > high_ha and open_ha > close_ha):
+                trigger_found = True
