@@ -1,5 +1,8 @@
 from backtesting.Backtester import Backtester
+import pandas as pd
 import time
+
+from utils.functions import calculate_line_scores, get_kangaroo_score
 
 
 class HighFreqReversal(Backtester):
@@ -39,10 +42,10 @@ class HighFreqReversal(Backtester):
         rows = zip(df['timestamp'], df['open_price'], df['high_price'], df['low_price'], df['close_price'])
 
         prices = {
-            'open': [],
-            'high': [],
-            'low': [],
-            'close': []
+            'open_price': [],
+            'high_price': [],
+            'low_price': [],
+            'close_price': []
         }
         kangaroos = 0
         skip = 0
@@ -50,10 +53,10 @@ class HighFreqReversal(Backtester):
             if i%10000==0:
                 print(i, kangaroos)
             
-            prices['open'].append(open_price)
-            prices['high'].append(high_price)
-            prices['low'].append(low_price)
-            prices['close'].append(close_price)
+            prices['open_price'].append(open_price)
+            prices['high_price'].append(high_price)
+            prices['low_price'].append(low_price)
+            prices['close_price'].append(close_price)
 
             if skip > 0:
                 skip -= 1
@@ -61,65 +64,86 @@ class HighFreqReversal(Backtester):
 
             if i > (8 * self._candle_length):
                 candle = self._get_candle(prices, 0)
+                trigger = self._get_trigger(candle)
                 if self._is_kangaroo(prices, candle):
-                    df.loc[i, ['signal', 'entry', 'stop', 'profit1', 'profit2']] = self._get_trigger(candle)
-                    skip = 240
-                    kangaroos += 1
+                    df_low = self._get_compressed_dataframe(prices)
+                    line_scores = calculate_line_scores(df_low, self._sr_radius, self._line_score_pips, self._pip_value)
+                    score = get_kangaroo_score(candle, line_scores, trigger[0] == 1)
+
+                    if score > 0:
+                        df.loc[i, ['signal', 'entry', 'stop', 'profit1', 'profit2']] = trigger
+                        skip = 240
+                        kangaroos += 1
     
     def _get_candle(self, prices, index):
         return {
-            'open': self._get_price(prices['open'], index, 'open'),
-            'high': self._get_price(prices['high'], index, 'high'),
-            'low': self._get_price(prices['low'], index, 'low'),
-            'close': self._get_price(prices['close'], index, 'close')
+            'open_price': self._get_price(prices['open_price'], index, 'open'),
+            'high_price': self._get_price(prices['high_price'], index, 'high'),
+            'low_price': self._get_price(prices['low_price'], index, 'low'),
+            'close_price': self._get_price(prices['close_price'], index, 'close')
         }
     
+    def _get_compressed_dataframe(self, prices):
+        candles = min(len(prices['open_price']) // self._candle_length, self._line_score_window)
+
+        data = []
+        for i in range(1, candles):
+            candle = self._get_candle(prices, i)
+            data.append([candle['open_price'], candle['high_price'], candle['low_price'], candle['close_price']])
+        
+        return pd.DataFrame(data, columns=['open_price', 'high_price', 'low_price', 'close_price'])
+    
     def _get_trigger(self, candle):
-        body_length = (candle['high'] - candle['low']) / self._kangaroo_pin_divisor
+        body_length = (candle['high_price'] - candle['low_price']) / self._kangaroo_pin_divisor
 
         # buy signal
         signal = 1
-        entry = candle['high']
-        stop = candle['low']
-        risk = candle['high'] - candle['low']
-        profit1 = candle['high'] + risk
+        entry = candle['high_price']
+        stop = candle['low_price']
+        risk = candle['high_price'] - candle['low_price']
+        profit1 = candle['high_price'] + risk
         profit2 = profit1 + risk
 
         # sell signal
-        if candle['open'] <= candle['low'] + body_length and candle['close'] <= candle['low'] + body_length:
+        if candle['open_price'] <= candle['low_price'] + body_length and candle['close_price'] <= candle['low_price'] + body_length:
             signal = -1
-            entry = candle['low']
-            stop = candle['high']
-            risk = candle['high'] - candle['low']
-            profit1 = candle['low'] - risk
+            entry = candle['low_price']
+            stop = candle['high_price']
+            risk = candle['high_price'] - candle['low_price']
+            profit1 = candle['low_price'] - risk
             profit2 = profit1 - risk
         
         return [signal, entry, stop, profit1, profit2]
 
     def _is_kangaroo(self, prices, candle):
-        if candle['high']- candle['low'] < self._kangaroo_min_length:
+        open_price = candle['open_price']
+        high_price = candle['high_price']
+        low_price = candle['low_price']
+        close_price = candle['close_price']
+
+        if high_price- low_price < self._kangaroo_min_length:
             return False
         
-        body_length = (candle['high'] - candle['low']) / self._kangaroo_pin_divisor
-        room_length = (candle['high'] - candle['low']) / self._kangaroo_room_divisor
+        body_length = (high_price - low_price) / self._kangaroo_pin_divisor
+        room_length = (high_price - low_price) / self._kangaroo_room_divisor
 
         # look for sell signals
-        if candle['open'] <= candle['low'] + body_length and candle['close'] <= candle['low'] + body_length:
-            prev_high_price = self._get_price(prices['high'], 1, 'high')
-            prev_low_price = self._get_price(prices['low'], 1, 'low')
-            if candle['open'] > prev_high_price or candle['close'] > prev_high_price or candle['open'] < prev_low_price or candle['close'] < prev_low_price:
+        if open_price <= low_price + body_length and close_price <= low_price + body_length:
+            prev_high_price = self._get_price(prices['high_price'], 1, 'high')
+            prev_low_price = self._get_price(prices['low_price'], 1, 'low')
+            if open_price > prev_high_price or close_price > prev_high_price or open_price < prev_low_price or close_price < prev_low_price:
                 return False
             for i in range(1, self._kangaroo_room_left + 1):
-                if self._get_price(prices['high'], i, 'high') > candle['high'] - room_length:
+                if self._get_price(prices['high_price'], i, 'high') > high_price - room_length:
                     return False
         # look for buy signals
-        elif candle['open'] >= candle['high'] - body_length and candle['close'] >= candle['high'] - body_length:
-            prev_high_price = self._get_price(prices['high'], 1, 'high')
-            prev_low_price = self._get_price(prices['low'], 1, 'low')
-            if candle['open'] > prev_high_price or candle['close'] > prev_high_price or candle['open'] < prev_low_price or candle['close'] < prev_low_price:
+        elif open_price >= high_price - body_length and close_price >= high_price - body_length:
+            prev_high_price = self._get_price(prices['high_price'], 1, 'high')
+            prev_low_price = self._get_price(prices['low_price'], 1, 'low')
+            if open_price > prev_high_price or close_price > prev_high_price or open_price < prev_low_price or close_price < prev_low_price:
                 return False
             for i in range(1, self._kangaroo_room_left + 1):
-                if self._get_price(prices['low'], i, 'low') < candle['low'] + room_length:
+                if self._get_price(prices['low_price'], i, 'low') < low_price + room_length:
                     return False
         else:
             return False
