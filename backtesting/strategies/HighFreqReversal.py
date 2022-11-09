@@ -26,6 +26,9 @@ class HighFreqReversal(Backtester):
 
         self._kangaroo_min_length = self._kangaroo_min_pips * pip_value
 
+        self._scores_index = -1
+        self._scores = {}
+
         super().__init__(asset, year, timeframe, profit1_keep_ratio,
                          adjusted_take_profit, trading_cost, pip_value, signal_expiry)
 
@@ -66,8 +69,7 @@ class HighFreqReversal(Backtester):
                 candle = self._get_candle(prices, 0)
                 trigger = self._get_trigger(candle)
                 if self._is_kangaroo(prices, candle):
-                    df_low = self._get_compressed_dataframe(prices)
-                    line_scores = calculate_line_scores(df_low, self._sr_radius, self._line_score_pips, self._pip_value)
+                    line_scores = self._get_line_scores(prices)
                     score = get_kangaroo_score(candle, line_scores, trigger[0] == 1)
 
                     if score > 0:
@@ -92,6 +94,16 @@ class HighFreqReversal(Backtester):
             data.append([candle['open_price'], candle['high_price'], candle['low_price'], candle['close_price']])
         
         return pd.DataFrame(data, columns=['open_price', 'high_price', 'low_price', 'close_price'])
+    
+    def _get_line_scores(self, prices):
+        delta = self._candle_length
+        last_index = len(prices['open_price'])
+        if self._scores_index < 0 or last_index - self._scores_index > delta:
+            df_low = self._get_compressed_dataframe(prices)
+            self._scores = calculate_line_scores(df_low, self._sr_radius, self._line_score_pips, self._pip_value)
+            self._scores_index = last_index
+
+        return self._scores
     
     def _get_trigger(self, candle):
         body_length = (candle['high_price'] - candle['low_price']) / self._kangaroo_pin_divisor
