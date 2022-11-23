@@ -9,7 +9,8 @@ class HighFreqReversal(Backtester):
     def __init__(self, asset, year, timeframe='M1',
                  profit1_keep_ratio=0.5, adjusted_take_profit=1,
                  candle_length=240,
-                 kangaroo_min_pips=20, kangaroo_pin_divisor=3.0, kangaroo_room_left=8, kangaroo_room_divisor=5.0,
+                 kangaroo_min_pips=20, kangaroo_pin_divisor=3.0, kangaroo_room_left=10, kangaroo_room_divisor=5.0,
+                 kangaroo_min_score=0, kangaroo_max_score=10000,
                  sr_radius=100, line_score_window=200, line_score_pips=10,
                  trading_cost=0.0002, pip_value=0.0001, signal_expiry=100):
 
@@ -20,6 +21,8 @@ class HighFreqReversal(Backtester):
         self._kangaroo_pin_divisor = kangaroo_pin_divisor
         self._kangaroo_room_left = kangaroo_room_left
         self._kangaroo_room_divisor = kangaroo_room_divisor
+        self._kangaroo_min_score = kangaroo_min_score
+        self._kangaroo_max_score = kangaroo_max_score
         self._sr_radius = sr_radius
         self._line_score_window = line_score_window
         self._line_score_pips = line_score_pips
@@ -65,14 +68,14 @@ class HighFreqReversal(Backtester):
                 skip -= 1
                 continue
 
-            if i > (8 * self._candle_length):
+            if i > (self._kangaroo_room_left * self._candle_length):
                 candle = self._get_candle(prices, 0)
                 trigger = self._get_trigger(candle)
                 if self._is_kangaroo(prices, candle):
                     line_scores = self._get_line_scores(prices)
                     score = get_kangaroo_score(candle, line_scores, trigger[0] == 1)
 
-                    if score > 0:
+                    if score >= self._kangaroo_min_score and score <= self._kangaroo_max_score:
                         df.loc[i, ['signal', 'entry', 'stop', 'profit1', 'profit2']] = trigger
                         skip = 240
                         kangaroos += 1
@@ -140,22 +143,22 @@ class HighFreqReversal(Backtester):
         room_length = (high_price - low_price) / self._kangaroo_room_divisor
 
         # look for sell signals
-        if open_price <= low_price + body_length and close_price <= low_price + body_length:
+        if open_price <= (low_price + body_length) and close_price <= (low_price + body_length):
             prev_high_price = self._get_price(prices['high_price'], 1, 'high')
             prev_low_price = self._get_price(prices['low_price'], 1, 'low')
             if open_price > prev_high_price or close_price > prev_high_price or open_price < prev_low_price or close_price < prev_low_price:
                 return False
             for i in range(1, self._kangaroo_room_left + 1):
-                if self._get_price(prices['high_price'], i, 'high') > high_price - room_length:
+                if self._get_price(prices['high_price'], i, 'high') > (high_price - room_length):
                     return False
         # look for buy signals
-        elif open_price >= high_price - body_length and close_price >= high_price - body_length:
+        elif open_price >= (high_price - body_length) and close_price >= (high_price - body_length):
             prev_high_price = self._get_price(prices['high_price'], 1, 'high')
             prev_low_price = self._get_price(prices['low_price'], 1, 'low')
             if open_price > prev_high_price or close_price > prev_high_price or open_price < prev_low_price or close_price < prev_low_price:
                 return False
             for i in range(1, self._kangaroo_room_left + 1):
-                if self._get_price(prices['low_price'], i, 'low') < low_price + room_length:
+                if self._get_price(prices['low_price'], i, 'low') < (low_price + room_length):
                     return False
         else:
             return False
