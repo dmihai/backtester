@@ -10,7 +10,7 @@ class PrevDayBreakout(Backtester):
     def __init__(self, asset, year, timeframe='M1',
                  risk=0.0005, entry=0.0001, profit=0.0005,
                  timeframe_low='D1', time_format='%Y-%m-%d',
-                 profit1_keep_ratio=0.5, adjusted_take_profit=1,
+                 profit1_keep_ratio=0.5, adjusted_take_profit=1, move_stop_to_breakeven=False,
                  trading_cost=0.0002, pip_value=0.0001, signal_expiry=3):
 
         start = time.time()
@@ -22,7 +22,7 @@ class PrevDayBreakout(Backtester):
         self._time_format = time_format
 
         super().__init__(asset, year, timeframe, profit1_keep_ratio,
-                         adjusted_take_profit, trading_cost, pip_value, signal_expiry)
+                         adjusted_take_profit, move_stop_to_breakeven, trading_cost, pip_value, signal_expiry)
 
         self._data_low = self.acquire_data(timeframe_low)
 

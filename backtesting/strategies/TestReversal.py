@@ -10,7 +10,7 @@ import numpy as np
 # https://forums.babypips.com/t/my-price-action-trading-strategy/582002
 class TestReversal(Backtester):
     def __init__(self, asset, year, timeframe='M1',
-                 profit1_keep_ratio=0.5, adjusted_take_profit=1,
+                 profit1_keep_ratio=0.5, adjusted_take_profit=1, move_stop_to_breakeven=False,
                  kangaroo_min_pips=20, kangaroo_pin_divisor=3.0, kangaroo_room_left=8, kangaroo_room_divisor=5.0,
                  sr_radius=100, line_score_window=200, line_score_pips=10,
                  trading_cost=0.0002, pip_value=0.0001, signal_expiry=3):
@@ -28,7 +28,7 @@ class TestReversal(Backtester):
         self._kangaroo_min_length = self._kangaroo_min_pips * pip_value
 
         super().__init__(asset, year, timeframe, profit1_keep_ratio,
-                         adjusted_take_profit, trading_cost, pip_value, signal_expiry)
+                         adjusted_take_profit, move_stop_to_breakeven, trading_cost, pip_value, signal_expiry)
 
         self._init_execution_time = time.time() - start
 

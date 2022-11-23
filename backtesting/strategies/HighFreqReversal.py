@@ -7,7 +7,7 @@ from utils.functions import calculate_line_scores, get_kangaroo_score
 
 class HighFreqReversal(Backtester):
     def __init__(self, asset, year, timeframe='M1',
-                 profit1_keep_ratio=0.5, adjusted_take_profit=1,
+                 profit1_keep_ratio=0.5, adjusted_take_profit=1, move_stop_to_breakeven=False,
                  candle_length=240,
                  kangaroo_min_pips=20, kangaroo_pin_divisor=3.0, kangaroo_room_left=10, kangaroo_room_divisor=5.0,
                  kangaroo_min_score=0, kangaroo_max_score=10000,
@@ -33,7 +33,7 @@ class HighFreqReversal(Backtester):
         self._scores = {}
 
         super().__init__(asset, year, timeframe, profit1_keep_ratio,
-                         adjusted_take_profit, trading_cost, pip_value, signal_expiry)
+                         adjusted_take_profit, move_stop_to_breakeven, trading_cost, pip_value, signal_expiry)
 
         self._init_execution_time = time.time() - start
 

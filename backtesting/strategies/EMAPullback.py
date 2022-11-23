@@ -12,7 +12,7 @@ class EMAPullback(Backtester):
                  hires_ema_1=8, hires_ema_2=13, hires_ema_3=21,
                  entry_offset=3, stop_offset=3,
                  min_diff_emas=1.5, max_ratio_emas=0.2,
-                 profit1_keep_ratio=0.5, adjusted_take_profit=1,
+                 profit1_keep_ratio=0.5, adjusted_take_profit=1, move_stop_to_breakeven=False,
                  trading_cost=0.0005, pip_value=0.0001, signal_expiry=3):
 
         start = time.time()
@@ -29,7 +29,7 @@ class EMAPullback(Backtester):
         self._max_ratio_emas = max_ratio_emas
 
         super().__init__(asset, year, timeframe, profit1_keep_ratio,
-                         adjusted_take_profit, trading_cost, pip_value, signal_expiry)
+                         adjusted_take_profit, move_stop_to_breakeven, trading_cost, pip_value, signal_expiry)
 
         self._data_low = self.acquire_data(timeframe_low)
         self._data_low = self.prepare_data_low()

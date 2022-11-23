@@ -7,13 +7,14 @@ import constants
 
 class Backtester:
     def __init__(self, asset, year, timeframe,
-                 profit1_keep_ratio, adjusted_take_profit,
+                 profit1_keep_ratio, adjusted_take_profit, move_stop_to_breakeven,
                  trading_cost, pip_value, signal_expiry):
         self._asset = asset
         self._year = year
         self._timeframe = timeframe
         self._profit1_keep_ratio = profit1_keep_ratio
         self._adjusted_take_profit = adjusted_take_profit
+        self._move_stop_to_breakeven = move_stop_to_breakeven
         self._trading_cost = trading_cost
         self._pip_value = pip_value
         self._signal_expiry = signal_expiry
@@ -56,8 +57,7 @@ class Backtester:
 
     def get_groupby_status(self):
         return self._data[
-            (self._data.status != '') &
-            (self._data.status != 'cancel')
+            self._data.status != ''
         ].groupby('status').size()
 
     def get_results(self):
@@ -128,6 +128,7 @@ class Backtester:
                         'entry': entry,
                         'profit1': profit1,
                         'profit2': profit2,
+                        'status': 'new',
                     })
 
                 new_cancel_orders = [
@@ -183,7 +184,8 @@ class Backtester:
                         })
                         status = ''
                     elif is_target_hit(trade['profit1'], high_price, low_price):
-                        trade['stop'] = trade['entry']
+                        if self._move_stop_to_breakeven:
+                            trade['stop'] = trade['entry']
                         status = 'profit1'
 
                 if status == 'profit1':
@@ -213,16 +215,17 @@ class Backtester:
         df.loc[(df.signal != 0) & (df.status == 'stop'),
                'pnl'] = -abs(df.entry - df.stop)
         profit1 = self._profit1_keep_ratio * abs(df.profit1 - df.entry)
+        loss1 = (1 - self._profit1_keep_ratio) * abs(df.entry - df.stop)
         profit2 = (1 - self._profit1_keep_ratio) * \
             abs(df.profit2 - df.entry)
-        df.loc[(df.signal != 0) & (df.status == 'even'), 'pnl'] = profit1
+        df.loc[(df.signal != 0) & (df.status == 'even'), 'pnl'] = profit1 - loss1
         df.loc[(df.signal != 0) & (df.status == 'profit2'),
                'pnl'] = profit1 + profit2
 
         df.loc[df.status.isin(
             ['stop', 'even', 'profit2']), 'pnl'] = df.pnl - self._trading_cost
         self._results = df.loc[df.pnl != 0, [
-            'timestamp', 'pnl', 'status', 'begin_offset', 'end_offset']].reset_index(drop=True)
+            'timestamp', 'signal', 'pnl', 'status', 'begin_offset', 'end_offset']].reset_index(drop=True)
 
     def _get_session_results(self, results):
         orders = results.timestamp.count()
