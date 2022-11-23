@@ -50,13 +50,13 @@ def calculate_line_scores(data, sr_radius, line_score_pips, pip_value):
 
     return scores
 
-def get_kangaroo_score(kangaroo, line_scores, buy_signal):
+def get_kangaroo_score(kangaroo, line_scores, is_buy_signal):
         open_price = kangaroo['open_price']
         high_price = kangaroo['high_price']
         low_price = kangaroo['low_price']
         close_price = kangaroo['close_price']
 
-        if buy_signal:
+        if is_buy_signal:
             tail_low = low_price
             tail_high = min(open_price, close_price)
             profit1_low = max(open_price, close_price)
@@ -87,18 +87,12 @@ def get_kangaroo_score(kangaroo, line_scores, buy_signal):
             if profit2_low <= line and line <= profit2_high and profit2_score < val:
                 profit2_score = val
 
-        tail_factor = 50
-        profit1_factor = 35
-        profit2_factor = 15
-        segments = tail_factor + profit1_factor + profit2_factor
+        tail_factor = 40
+        profit1_factor = 40
+        profit2_factor = 20
 
-        segment_width = max_score / segments
-        tail_segments = math.floor(tail_score / segment_width)
-        profit1_segments = math.ceil(profit1_score / segment_width)
-        profit2_segments = math.ceil(profit2_score / segment_width)
-
-        score = tail_factor * (tail_segments - (segments / 2))
-        score+= profit1_factor * (segments - profit1_segments - (segments / 2))
-        score+= profit2_factor * (segments - profit2_segments - (segments / 2))
+        score = tail_factor * tail_score
+        score-= profit1_factor * profit1_score
+        score-= profit2_factor * profit2_score
 
         return score
