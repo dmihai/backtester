@@ -12,6 +12,7 @@ class HighFreqReversal(Backtester):
                  kangaroo_min_pips=20, kangaroo_pin_divisor=3.0, kangaroo_room_left=10, kangaroo_room_divisor=5.0,
                  kangaroo_min_score=0, kangaroo_max_score=10000,
                  sr_radius=100, line_score_window=200, line_score_pips=10,
+                 profit1_risk_ratio=1, profit2_risk_ratio=1,
                  trading_cost=0.0002, pip_value=0.0001, signal_expiry=100):
 
         start = time.time()
@@ -26,6 +27,8 @@ class HighFreqReversal(Backtester):
         self._sr_radius = sr_radius
         self._line_score_window = line_score_window
         self._line_score_pips = line_score_pips
+        self._profit1_risk_ratio = profit1_risk_ratio
+        self._profit2_risk_ratio = profit2_risk_ratio
 
         self._kangaroo_min_length = self._kangaroo_min_pips * pip_value
 
@@ -76,7 +79,8 @@ class HighFreqReversal(Backtester):
                     score = get_kangaroo_score(candle, line_scores, trigger[0] == 1)
 
                     if score >= self._kangaroo_min_score and score <= self._kangaroo_max_score:
-                        df.loc[i, ['signal', 'entry', 'stop', 'profit1', 'profit2']] = trigger
+                        trigger.append(score)
+                        df.loc[i, ['signal', 'entry', 'stop', 'profit1', 'profit2', 'score']] = trigger
                         skip = 240
                         kangaroos += 1
     
@@ -116,8 +120,8 @@ class HighFreqReversal(Backtester):
         entry = candle['high_price']
         stop = candle['low_price']
         risk = candle['high_price'] - candle['low_price']
-        profit1 = candle['high_price'] + risk
-        profit2 = profit1 + risk
+        profit1 = candle['high_price'] + (self._profit1_risk_ratio * risk)
+        profit2 = profit1 + (self._profit2_risk_ratio * risk)
 
         # sell signal
         if candle['open_price'] <= candle['low_price'] + body_length and candle['close_price'] <= candle['low_price'] + body_length:
@@ -125,8 +129,8 @@ class HighFreqReversal(Backtester):
             entry = candle['low_price']
             stop = candle['high_price']
             risk = candle['high_price'] - candle['low_price']
-            profit1 = candle['low_price'] - risk
-            profit2 = profit1 - risk
+            profit1 = candle['low_price'] - (self._profit1_risk_ratio * risk)
+            profit2 = profit1 - (self._profit2_risk_ratio * risk)
         
         return [signal, entry, stop, profit1, profit2]
 
