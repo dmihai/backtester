@@ -1,6 +1,8 @@
-def add_support(df, max_radius=200):
-    df['support_left'] = 0
-    df['support_right'] = 0
+def add_support(data, max_radius=200):
+    df = data.copy()
+
+    df.loc[:, 'support_left'] = 0
+    df.loc[:, 'support_right'] = 0
 
     for i in range(1, max_radius):
         df.loc[(df.shift(i).low_price >= df.low_price) & (df.support_left == (i-1)),
@@ -11,9 +13,11 @@ def add_support(df, max_radius=200):
     return df
 
 
-def add_resistance(df, max_radius=200):
-    df['resistance_left'] = 0
-    df['resistance_right'] = 0
+def add_resistance(data, max_radius=200):
+    df = data.copy()
+
+    df.loc[:, 'resistance_left'] = 0
+    df.loc[:, 'resistance_right'] = 0
 
     for i in range(1, max_radius):
         df.loc[(df.shift(i).high_price <= df.high_price) & (df.resistance_left == (i-1)),
@@ -23,7 +27,9 @@ def add_resistance(df, max_radius=200):
 
     return df
 
-def add_heikin_ashi(df):
+def add_heikin_ashi(data):
+    df = data.copy()
+
     df['close_ha'] = (df.open_price + df.high_price + df.low_price + df.close_price) / 4
     df['open_ha'] = (df.open_price + df.close_price) / 2
 
@@ -35,7 +41,9 @@ def add_heikin_ashi(df):
 
     return df
 
-def add_rsi(df, periods=14, ema=True, column='close_price'):
+def add_rsi(data, periods=14, ema=True, column='close_price'):
+    df = data.copy()
+
     close_delta = df[column].diff()
 
     up = close_delta.clip(lower=0)
@@ -55,13 +63,15 @@ def add_rsi(df, periods=14, ema=True, column='close_price'):
 
     return df
 
-def add_stochastic(df, stoch_length=14, k_length=3, d_length=3, column='close_price'):
-    data = df[column]
+def add_stochastic(data, stoch_length=14, k_length=3, d_length=3, column='close_price'):
+    df = data.copy()
 
-    min_val = data.rolling(window=stoch_length, center=False).min()
-    max_val = data.rolling(window=stoch_length, center=False).max()
+    s = df[column]
 
-    stoch = ((data - min_val) / (max_val - min_val)) * 100
+    min_val = s.rolling(window=stoch_length, center=False).min()
+    max_val = s.rolling(window=stoch_length, center=False).max()
+
+    stoch = ((s - min_val) / (max_val - min_val)) * 100
 
     df['stoch_k'] = stoch.rolling(window=k_length, center=False).mean()
     df['stoch_d'] = df['stoch_k'].rolling(window=d_length, center=False).mean()
