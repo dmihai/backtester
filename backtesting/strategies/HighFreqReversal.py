@@ -75,14 +75,19 @@ class HighFreqReversal(Backtester):
                 candle = self._get_candle(prices, 0)
                 trigger = self._get_trigger(candle)
                 if self._is_kangaroo(prices, candle):
-                    line_scores = self._get_line_scores(prices)
-                    score = get_kangaroo_score(candle, line_scores, trigger[0] == 1)
+                    trend_score = self._get_trend_score(prices, candle)
 
-                    if score >= self._kangaroo_min_score and score <= self._kangaroo_max_score:
-                        trigger.append(score)
-                        df.loc[i, ['signal', 'entry', 'stop', 'profit1', 'profit2', 'score']] = trigger
-                        skip = 240
-                        kangaroos += 1
+                    min_trend = -1
+                    if (trigger[0] == 1 and trend_score >= min_trend) or (trigger[0] == -1 and trend_score <= -min_trend):
+                        line_scores = self._get_line_scores(prices)
+                        score = get_kangaroo_score(candle, line_scores, trigger[0] == 1)
+
+                        if self._kangaroo_min_score <= score and score <= self._kangaroo_max_score:
+                            trigger.append(score)
+                            trigger.append(trend_score)
+                            df.loc[i, ['signal', 'entry', 'stop', 'profit1', 'profit2', 'score', 'trend']] = trigger
+                            skip = 240
+                            kangaroos += 1
     
     def _get_candle(self, prices, index):
         return {
@@ -133,6 +138,22 @@ class HighFreqReversal(Backtester):
             profit2 = profit1 - (self._profit2_risk_ratio * risk)
         
         return [signal, entry, stop, profit1, profit2]
+    
+    def _get_trend_score(self, prices, candle):
+        indexes = [8, 13, 21, 34, 55, 89, 144]
+        uptrend = 0
+        total = 0
+
+        for i in indexes:
+            try: 
+                prev_price = self._get_price(prices['close_price'], i, 'close')
+                total += 1
+                if prev_price <= candle['close_price']:
+                    uptrend += 1
+            except:
+                pass
+        
+        return (2 * uptrend / total) - 1
 
     def _is_kangaroo(self, prices, candle):
         open_price = candle['open_price']
