@@ -5,6 +5,7 @@ from backtesting.Backtester import Backtester
 from utils.indicators import add_support, add_resistance
 
 
+# https://www.youtube.com/watch?v=tqB_NPRz3GQ
 class DoubleTopDoubleBottom(Backtester):
     def __init__(self, asset, year, timeframe='H4',
                  profit1_keep_ratio=0.5, adjusted_take_profit=1, move_stop_to_breakeven=False,
