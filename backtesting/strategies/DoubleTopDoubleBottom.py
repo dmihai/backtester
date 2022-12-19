@@ -40,14 +40,14 @@ class DoubleTopDoubleBottom(Backtester):
             if df.support_left >= 2 and df.support_right >= 2:
                 df['swing_low_wick'] = df.low_price
                 df['swing_low_body'] = df['body_low_price']
-                df['swing_low_left'] = 1
-                df['swing_low_right'] = 1
+                df['swing_low_left'] = -1
+                df['swing_low_right'] = -1
             
             if df.resistance_left >= 2 and df.resistance_right >= 2:
                 df['swing_high_wick'] = df.high_price
                 df['swing_high_body'] = df['body_high_price']
-                df['swing_high_left'] = 1
-                df['swing_high_right'] = 1
+                df['swing_high_left'] = -1
+                df['swing_high_right'] = -1
             
             return df
 
@@ -56,26 +56,26 @@ class DoubleTopDoubleBottom(Backtester):
         for i in range(1, 10):
             # check if swing structure is valid
             # (zone between swing wick and swing body has room to left and right)
-            df.loc[(df.swing_low_left == 1) & ((df.shift(i).low_price > df.swing_low_body)), 'swing_low_left'] = 2
-            df.loc[(df.swing_low_right == 1) & ((df.shift(-i).low_price > df.swing_low_body)), 'swing_low_right'] = 2
-            df.loc[(df.swing_high_left == 1) & ((df.shift(i).high_price < df.swing_high_body)), 'swing_high_left'] = 2
-            df.loc[(df.swing_high_right == 1) & ((df.shift(-i).high_price < df.swing_high_body)), 'swing_high_right'] = 2
+            df.loc[(df.swing_low_left == -1) & ((df.shift(i).low_price > df.swing_low_body)), 'swing_low_left'] = i
+            df.loc[(df.swing_low_right == -1) & ((df.shift(-i).low_price > df.swing_low_body)), 'swing_low_right'] = i
+            df.loc[(df.swing_high_left == -1) & ((df.shift(i).high_price < df.swing_high_body)), 'swing_high_left'] = i
+            df.loc[(df.swing_high_right == -1) & ((df.shift(-i).high_price < df.swing_high_body)), 'swing_high_right'] = i
 
             # check if swing structure is invalid
-            df.loc[(df.swing_low_left == 1) & ((df.shift(i).low_price < df.swing_low_wick)), 'swing_low_left'] = 3
-            df.loc[(df.swing_low_right == 1) & ((df.shift(-i).low_price < df.swing_low_wick)), 'swing_low_right'] = 3
-            df.loc[(df.swing_high_left == 1) & ((df.shift(i).high_price > df.swing_high_wick)), 'swing_high_left'] = 3
-            df.loc[(df.swing_high_right == 1) & ((df.shift(-i).high_price > df.swing_high_wick)), 'swing_high_right'] = 3
+            df.loc[(df.swing_low_left == -1) & ((df.shift(i).low_price < df.swing_low_wick)), 'swing_low_left'] = -2
+            df.loc[(df.swing_low_right == -1) & ((df.shift(-i).low_price < df.swing_low_wick)), 'swing_low_right'] = -2
+            df.loc[(df.swing_high_left == -1) & ((df.shift(i).high_price > df.swing_high_wick)), 'swing_high_left'] = -2
+            df.loc[(df.swing_high_right == -1) & ((df.shift(-i).high_price > df.swing_high_wick)), 'swing_high_right'] = -2
 
             # update swing body
-            df.loc[(df.swing_low_left == 1) & (df.shift(i).body_low_price < df.swing_low_body), 'swing_low_body'] = df.shift(i).body_low_price
-            df.loc[(df.swing_low_right == 1) & (df.shift(-i).body_low_price < df.swing_low_body), 'swing_low_body'] = df.shift(-i).body_low_price
-            df.loc[(df.swing_high_left == 1) & (df.shift(i).body_high_price > df.swing_high_body), 'swing_high_body'] = df.shift(i).body_high_price
-            df.loc[(df.swing_high_right == 1) & (df.shift(-i).body_high_price > df.swing_high_body), 'swing_high_body'] = df.shift(-i).body_high_price
+            df.loc[(df.swing_low_left == -1) & (df.shift(i).body_low_price < df.swing_low_body), 'swing_low_body'] = df.shift(i).body_low_price
+            df.loc[(df.swing_low_right == -1) & (df.shift(-i).body_low_price < df.swing_low_body), 'swing_low_body'] = df.shift(-i).body_low_price
+            df.loc[(df.swing_high_left == -1) & (df.shift(i).body_high_price > df.swing_high_body), 'swing_high_body'] = df.shift(i).body_high_price
+            df.loc[(df.swing_high_right == -1) & (df.shift(-i).body_high_price > df.swing_high_body), 'swing_high_body'] = df.shift(-i).body_high_price
         
         print(df)
-        print(df.loc[((df.swing_low_left == 2) & (df.swing_low_right == 2)) | ((df.swing_high_left == 2) & (df.swing_high_right == 2))])
-        print(df.loc[(df.swing_low_left == 3) | (df.swing_low_right == 3) | (df.swing_high_left == 3) | (df.swing_high_right == 3)])
+        print(df.loc[((df.swing_low_left > 0) & (df.swing_low_right > 0) & (df.swing_low_body - df.swing_low_wick > 0.001)) | ((df.swing_high_left > 0) & (df.swing_high_right > 0) & (df.swing_high_wick - df.swing_high_body > 0.001))])
+        print(df.loc[(df.swing_low_left == -2) | (df.swing_low_right == -2) | (df.swing_high_left == -2) | (df.swing_high_right == -2)])
 
         return df
     
