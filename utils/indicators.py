@@ -1,3 +1,6 @@
+import pandas as pd
+
+
 def add_support(data, max_radius=200):
     df = data.copy()
 
@@ -27,6 +30,25 @@ def add_resistance(data, max_radius=200):
 
     return df
 
+
+def add_atr(data, period=14):
+    df = data.copy()
+
+    ranges = pd.DataFrame([
+        df.high_price - df.low_price,
+        abs(df.high_price - df.shift(1).close_price),
+        abs(df.low_price - df.shift(1).close_price)
+    ]).transpose()
+
+    df['true_range'] = ranges.max(axis=1)
+    df['avg_true_range'] = df['true_range'] / period
+
+    for i in range(1, period):
+        df['avg_true_range'] = df.avg_true_range + (df.shift(i).true_range / period)
+
+    return df
+
+
 def add_heikin_ashi(data):
     df = data.copy()
 
@@ -40,6 +62,7 @@ def add_heikin_ashi(data):
     df['low_ha'] = df[['open_ha', 'close_ha', 'low_price']].min(axis=1)
 
     return df
+
 
 def add_rsi(data, periods=14, ema=True, column='close_price'):
     df = data.copy()
@@ -62,6 +85,7 @@ def add_rsi(data, periods=14, ema=True, column='close_price'):
     df['rsi'] = 100 - (100 / (1 + rsi))
 
     return df
+
 
 def add_stochastic(data, stoch_length=14, k_length=3, d_length=3, column='close_price'):
     df = data.copy()
