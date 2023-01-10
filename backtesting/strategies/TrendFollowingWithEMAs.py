@@ -1,11 +1,16 @@
 import time
 
 from backtesting.Backtester import Backtester
+from utils.patterns import add_engulfing, add_kangaroo
+from utils.functions import df_to_list
 
 
+# https://www.youtube.com/watch?v=v3w4RprB-8Q
 class TrendFollowingWithEMAs(Backtester):
     def __init__(self, asset, year, timeframe='H4',
                  timeframe_low='D1',
+                 engulfing_min_pips=10, engulfing_room_left=4,
+                 pinbar_min_pips=10, pinbar_room_left=4,
                  ema_1=8, ema_2=13, ema_3=21,
                  entry_offset=3, stop_offset=3,
                  profit1_keep_ratio=0.5, adjusted_take_profit=1, move_stop_to_breakeven=False,
@@ -14,6 +19,10 @@ class TrendFollowingWithEMAs(Backtester):
         start = time.time()
 
         self._timeframe_low = timeframe_low
+        self._engulfing_min_pips = engulfing_min_pips
+        self._engulfing_room_left = engulfing_room_left
+        self._pinbar_min_pips = pinbar_min_pips
+        self._pinbar_room_left = pinbar_room_left
         self._ema_1 = ema_1
         self._ema_2 = ema_2
         self._ema_3 = ema_3
@@ -36,6 +45,14 @@ class TrendFollowingWithEMAs(Backtester):
         df['ema_2'] = df['close_price'].ewm(span=self._ema_2).mean()
         df['ema_3'] = df['close_price'].ewm(span=self._ema_3).mean()
 
+        df['body_low_price'] = df[['close_price', 'open_price']].min(axis=1)
+        df['body_high_price'] = df[['close_price', 'open_price']].max(axis=1)
+
+        df['range'] = 0
+
+        df = add_engulfing(df, pip_value=self._pip_value, min_pips=self._engulfing_min_pips, room_left=self._engulfing_room_left)
+        df = add_kangaroo(df, pip_value=self._pip_value, min_pips=self._pinbar_min_pips, room_left=self._pinbar_room_left)
+
         return df
     
 
@@ -50,4 +67,48 @@ class TrendFollowingWithEMAs(Backtester):
     
 
     def _calculate_triggers(self):
-        pass
+        df = self._data
+        prices = df_to_list(self._data_low, ['timestamp', 'ema_1', 'ema_2', 'ema_3'])
+
+        def is_buying(i):
+            current_ema_cond = prices['ema_1'][i] > prices['ema_2'][i] and prices['ema_2'][i] > prices['ema_3'][i]
+            prev_ema_cond = True
+            if i > 0:
+                prev_ema_cond = prices['ema_1'][i-1] < prices['ema_1'][i] and prices['ema_2'][i-1] < prices['ema_2'][i] and prices['ema_3'][i-1] < prices['ema_3'][i]
+            return current_ema_cond and prev_ema_cond
+        def is_selling(i):
+            current_ema_cond = prices['ema_1'][i] < prices['ema_2'][i] and prices['ema_2'][i] < prices['ema_3'][i]
+            prev_ema_cond = True
+            if i > 0:
+                prev_ema_cond = prices['ema_1'][i-1] > prices['ema_1'][i] and prices['ema_2'][i-1] > prices['ema_2'][i] and prices['ema_3'][i-1] > prices['ema_3'][i]
+            return current_ema_cond and prev_ema_cond
+        
+        ranges = []
+        range_start = None
+        range_type = 0
+        range_offset = 0
+        for i in range(len(prices['timestamp'])):
+            if range_start is None and range_offset >= 4:
+                range_start = i
+            if is_buying(i):
+                range_offset += 1
+                range_type = 1
+            elif is_selling(i):
+                range_offset += 1
+                range_type = -1
+            else:
+                if range_start is not None:
+                    ranges.append({
+                        'start': range_start,
+                        'end': (i + 1) if i < (len(prices['timestamp']) - 1) else i,
+                        'type': range_type
+                    })
+                range_offset = 0
+                range_start = None
+                range_type = 0
+        
+        for r in ranges:
+            start = prices['timestamp'][r['start']]
+            end = prices['timestamp'][r['end']]
+            df.loc[(start <= df.timestamp) & (df.timestamp < end), 'range'] = r['type']
+
