@@ -41,3 +41,25 @@ def add_kangaroo(data, pip_value=0.0001, min_pips=20, pin_divisor=3.0, room_left
                'kangaroo'] = 0
 
     return df
+
+
+# Marks bullish and bearish engulfing candles
+# Make sure that the dataframe contains body_low_price and body_high_price
+def add_engulfing(data, pip_value=0.0001, min_pips=10):
+       df = data.copy()
+
+       min_length = min_pips * pip_value
+
+       # bearish engulfing
+       df.loc[(df.body_low_price < df.shift(1).body_low_price) &
+              (df.body_high_price >= df.shift(1).body_high_price) &
+              (df.open_price > df.close_price) &
+              (df.open_price - df.close_price > min_length) , 'engulfing'] = -1
+       
+       # bullish engulfing
+       df.loc[(df.body_low_price <= df.shift(1).body_low_price) &
+              (df.body_high_price > df.shift(1).body_high_price) &
+              (df.close_price > df.open_price) &
+              (df.close_price - df.open_price > min_length) , 'engulfing'] = 1
+
+       return df
