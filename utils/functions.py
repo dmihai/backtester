@@ -2,6 +2,25 @@ import math
 import numpy as np
 from utils.indicators import add_support, add_resistance
 
+
+def df_to_list(data, columns):
+    df = data.copy()
+    df_list = []
+    prices = {}
+
+    for column in columns:
+        df_list.append(df[column])
+        prices[column] = []
+    
+    rows = zip(*df_list)
+
+    for i, val in enumerate(rows):
+        for i in range(len(columns)):
+            prices[columns[i]].append(val[i])
+
+    return prices
+
+
 def calculate_line_scores(data, sr_radius, line_score_pips, pip_value):
     df = data.copy()
 
