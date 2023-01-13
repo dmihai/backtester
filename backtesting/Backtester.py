@@ -39,6 +39,7 @@ class Backtester:
         df['signal'] = 0
         df['stop'] = 0.0
         df['entry'] = 0.0
+        df['risk'] = 0.0
         df['profit1'] = 0.0
         df['profit2'] = 0.0
         df['begin_offset'] = 0

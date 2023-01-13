@@ -111,4 +111,35 @@ class TrendFollowingWithEMAs(Backtester):
             start = prices['timestamp'][r['start']]
             end = prices['timestamp'][r['end']]
             df.loc[(start <= df.timestamp) & (df.timestamp < end), 'range'] = r['type']
+        
+        stop_offset = self._stop_offset * self._pip_value
+        entry_offset = self._entry_offset * self._pip_value
 
+        df.loc[(df.range == 1) & (df.engulfing == 1), 'signal'] = 1
+        df.loc[(df.range == 1) & (df.engulfing == 1), 'stop'] = df.low_price - stop_offset
+        df.loc[(df.range == 1) & (df.engulfing == 1), 'entry'] = df.high_price + entry_offset
+        df.loc[(df.range == 1) & (df.engulfing == 1) & (df.low_price > df.shift(1).low_price), 'stop'] = df.shift(1).low_price - stop_offset
+        df.loc[(df.range == 1) & (df.engulfing == 1) & (df.high_price < df.shift(1).high_price), 'entry'] = df.shift(1).high_price + entry_offset
+        df.loc[(df.range == 1) & (df.engulfing == 1), 'risk'] = df.entry - df.stop
+        
+        df.loc[(df.range == -1) & (df.engulfing == -1), 'signal'] = -1
+        df.loc[(df.range == -1) & (df.engulfing == -1), 'stop'] = df.high_price + stop_offset
+        df.loc[(df.range == -1) & (df.engulfing == -1), 'entry'] = df.low_price - entry_offset
+        df.loc[(df.range == -1) & (df.engulfing == -1) & (df.high_price < df.shift(1).high_price), 'stop'] = df.shift(1).high_price + stop_offset
+        df.loc[(df.range == -1) & (df.engulfing == -1) & (df.low_price > df.shift(1).low_price), 'entry'] = df.shift(1).low_price - entry_offset
+        df.loc[(df.range == -1) & (df.engulfing == -1), 'risk'] = df.stop - df.entry
+
+        df.loc[(df.range == 1) & (df.kangaroo == 1), 'signal'] = 1
+        df.loc[(df.range == 1) & (df.kangaroo == 1), 'stop'] = df.low_price - stop_offset
+        df.loc[(df.range == 1) & (df.kangaroo == 1), 'entry'] = df.high_price + entry_offset
+        df.loc[(df.range == 1) & (df.kangaroo == 1), 'risk'] = df.entry - df.stop
+
+        df.loc[(df.range == -1) & (df.kangaroo == -1), 'signal'] = -1
+        df.loc[(df.range == -1) & (df.kangaroo == -1), 'stop'] = df.high_price + stop_offset
+        df.loc[(df.range == -1) & (df.kangaroo == -1), 'entry'] = df.low_price - entry_offset
+        df.loc[(df.range == -1) & (df.kangaroo == -1), 'risk'] = df.stop - df.entry
+
+        df.loc[df.signal == 1, 'profit1'] = df.entry + df.risk
+        df.loc[df.signal == 1, 'profit2'] = df.entry + (2 * df.risk)
+        df.loc[df.signal == -1, 'profit1'] = df.entry - df.risk
+        df.loc[df.signal == -1, 'profit2'] = df.entry - (2 * df.risk)
