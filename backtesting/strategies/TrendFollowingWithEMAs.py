@@ -8,7 +8,7 @@ from utils.functions import df_to_list
 # https://www.youtube.com/watch?v=v3w4RprB-8Q
 class TrendFollowingWithEMAs(Backtester):
     def __init__(self, asset, year, timeframe='H4',
-                 timeframe_low='D1',
+                 timeframe_low='D1', trend_confirmation_bars=3,
                  engulfing_min_pips=10, engulfing_room_left=4,
                  pinbar_min_pips=10, pinbar_room_left=4,
                  ema_1=8, ema_2=13, ema_3=21,
@@ -19,6 +19,7 @@ class TrendFollowingWithEMAs(Backtester):
         start = time.time()
 
         self._timeframe_low = timeframe_low
+        self._trend_confirmation_bars = trend_confirmation_bars
         self._engulfing_min_pips = engulfing_min_pips
         self._engulfing_room_left = engulfing_room_left
         self._pinbar_min_pips = pinbar_min_pips
@@ -88,7 +89,7 @@ class TrendFollowingWithEMAs(Backtester):
         range_type = 0
         range_offset = 0
         for i in range(len(prices['timestamp'])):
-            if range_start is None and range_offset >= 4:
+            if range_start is None and range_offset > self._trend_confirmation_bars:
                 range_start = i
             if is_buying(i):
                 range_offset += 1
