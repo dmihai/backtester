@@ -2,6 +2,7 @@ import time
 
 from backtesting.Backtester import Backtester
 from utils.indicators import add_support, add_resistance, add_atr
+from utils.functions import df_to_list
 
 
 class HarmonicPatterns(Backtester):
@@ -92,11 +93,21 @@ class HarmonicPatterns(Backtester):
         print(len(res))
 
         bats = []
-        prices = self._df_to_list(df)
+        prices = df_to_list(df, [
+            'timestamp', 'open_price', 'high_price', 'low_price', 'close_price',
+            'body_low_price', 'body_high_price', 'support_left', 'resistance_left'
+        ])
         for pattern in res:
             if len(pattern) != 5:
                 continue
-
+            
+            first_swing = swings[pattern[0]]
+            price_index = first_swing['index']
+            if first_swing['type'] == 'low' and prices['support_left'][price_index] < 5:
+                continue
+            if first_swing['type'] == 'high' and prices['resistance_left'][price_index] < 5:
+                continue
+            
             xa = self._get_leg_price(swings, pattern[0], pattern[1])
             ab = self._get_leg_price(swings, pattern[1], pattern[2])
             bc = self._get_leg_price(swings, pattern[2], pattern[3])
@@ -109,12 +120,13 @@ class HarmonicPatterns(Backtester):
                 if self._legs_matching_fibo(ab, bc, 0.886):
                     if self._legs_matching_fibo(bc, cd, 2.618):
                         bats.append(pattern)
+        
+        # remove duplicate entries
+        bat_set = set()
+        for bat in bats:
+            bat_set.add(bat[0])
 
         print(len(bats))
-        for bat in bats:
-            print('--------------------------------')
-            for swing in bat:
-                print(swings[swing]['timestamp'])
 
         return df
     
@@ -157,45 +169,6 @@ class HarmonicPatterns(Backtester):
                 self._walk_swings(swings, new_pattern, res)
 
             i += 1
-    
-
-    def _df_to_list(self, df):
-        rows = zip(
-            df['timestamp'],
-            df['open_price'],
-            df['high_price'],
-            df['low_price'],
-            df['close_price'],
-            df['body_low_price'],
-            df['body_high_price'],
-            df['support_left'],
-            df['resistance_left']
-        )
-
-        prices = {
-            'timestamp': [],
-            'open_price': [],
-            'high_price': [],
-            'low_price': [],
-            'close_price': [],
-            'body_low_price': [],
-            'body_high_price': [],
-            'support_left': [],
-            'resistance_left': [],
-        }
-
-        for i, (timestamp, open_price, high_price, low_price, close_price, body_low_price, body_high_price, support_left, resistance_left) in enumerate(rows):
-            prices['timestamp'].append(timestamp.strftime('%Y-%m-%d %H:%M'))
-            prices['open_price'].append(open_price)
-            prices['high_price'].append(high_price)
-            prices['low_price'].append(low_price)
-            prices['close_price'].append(close_price)
-            prices['body_low_price'].append(body_low_price)
-            prices['body_high_price'].append(body_high_price)
-            prices['support_left'].append(support_left)
-            prices['resistance_left'].append(resistance_left)
-        
-        return prices
     
 
     def _get_leg_price(self, swings, index1, index2):
